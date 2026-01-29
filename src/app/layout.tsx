@@ -3,6 +3,7 @@ import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ROOT_METADATA } from "@/lib/metadata";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,9 +19,50 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Co-Creator AI",
-  description:
-    "AI co-pilot for content creators. Generate ideas, scripts, and copy that stay on-brand.",
+  ...ROOT_METADATA,
+  icons: {
+    icon: [
+      {
+        url: "/favicon/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicon/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicon_dark/favicon-16x16.png",
+        sizes: "16x16",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        url: "/favicon_dark/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+    shortcut: [
+      { url: "/favicon/favicon.ico", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon_dark/favicon.ico", media: "(prefers-color-scheme: dark)" },
+    ],
+    apple: [
+      {
+        url: "/favicon/apple-touch-icon.png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicon_dark/apple-touch-icon.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+  },
+  manifest: "/favicon/site.webmanifest",
 };
 
 export default function RootLayout({

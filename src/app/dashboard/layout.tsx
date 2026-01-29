@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description:
+    "Your content command center. See recent ideas and scripts, generate new ideas, and jump into your B-roll library, channel profile, and performance.",
+  robots: { index: false, follow: false },
+};
 
 export default async function DashboardLayout({
   children,

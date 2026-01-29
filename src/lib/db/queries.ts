@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "./index";
 import {
   channels,
@@ -26,6 +26,15 @@ export async function getChannelWithBuckets(channelId: string) {
     with: { buckets: true, inspirationVideos: true },
   });
   return channel ?? null;
+}
+
+export async function getIdeaByIdForChannel(ideaId: string, channelId: string) {
+  const [idea] = await db
+    .select()
+    .from(ideas)
+    .where(and(eq(ideas.id, ideaId), eq(ideas.channelId, channelId)))
+    .limit(1);
+  return idea ?? null;
 }
 
 export async function getRecentIdeas(channelId: string, limit = 10) {

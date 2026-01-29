@@ -4,12 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRef } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles } from 'lucide-react';
+import Image from 'next/image';
 import { BlocksIcon, type BlocksIconHandle } from '@/components/ui/blocks';
-import { ChartSplineIcon, type ChartSplineIconHandle } from '@/components/ui/chart-spline';
+import {
+    ChartSplineIcon,
+    type ChartSplineIconHandle,
+} from '@/components/ui/chart-spline';
 import { ClapIcon, type ClapIconHandle } from '@/components/ui/clap';
 import { ZapIcon, type ZapHandle } from '@/components/ui/zap';
-import { GalleryHorizontalEndIcon, type GalleryHorizontalEndIconHandle } from '@/components/ui/gallery-horizontal-end';
+import {
+    GalleryHorizontalEndIcon,
+    type GalleryHorizontalEndIconHandle,
+} from '@/components/ui/gallery-horizontal-end';
 import {
     Sidebar,
     SidebarContent,
@@ -47,13 +53,23 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     {
         label: 'Overview',
         items: [
-            { title: 'Dashboard', url: '/dashboard', icon: BlocksIcon, animatedIconKey: 'blocks' },
+            {
+                title: 'Dashboard',
+                url: '/dashboard',
+                icon: BlocksIcon,
+                animatedIconKey: 'blocks',
+            },
         ],
     },
     {
         label: 'Content',
         items: [
-            { title: 'Ideas', url: '/dashboard/ideas', icon: ZapIcon, animatedIconKey: 'flask' },
+            {
+                title: 'Ideas',
+                url: '/dashboard/ideas',
+                icon: ZapIcon,
+                animatedIconKey: 'flask',
+            },
             {
                 title: 'B-roll library',
                 url: '/dashboard/broll',
@@ -65,7 +81,12 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     {
         label: 'Channel',
         items: [
-            { title: 'Channel profile', url: '/dashboard/channel', icon: ClapIcon, animatedIconKey: 'clap' },
+            {
+                title: 'Channel profile',
+                url: '/dashboard/channel',
+                icon: ClapIcon,
+                animatedIconKey: 'clap',
+            },
         ],
     },
     {
@@ -100,7 +121,10 @@ export function AppSidebar({
     const clapRef = useRef<ClapIconHandle>(null);
     const chartRef = useRef<ChartSplineIconHandle>(null);
 
-    const animatedRefs: Record<AnimatedIconKey, React.RefObject<AnimatedIconRef | null>> = {
+    const animatedRefs: Record<
+        AnimatedIconKey,
+        React.RefObject<AnimatedIconRef | null>
+    > = {
         blocks: blocksRef,
         flask: flaskRef,
         gallery: galleryRef,
@@ -111,7 +135,10 @@ export function AppSidebar({
     const animatedIcons: Record<
         AnimatedIconKey,
         React.ForwardRefExoticComponent<
-            { size?: number; className?: string } & React.RefAttributes<AnimatedIconRef>
+            {
+                size?: number;
+                className?: string;
+            } & React.RefAttributes<AnimatedIconRef>
         >
     > = {
         blocks: BlocksIcon,
@@ -129,19 +156,31 @@ export function AppSidebar({
 
     return (
         <Sidebar variant="sidebar" collapsible="icon">
-            <SidebarHeader className="border-sidebar-border group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:[&_ul]:items-center">
+            <SidebarHeader className="flex justify-start border-sidebar-border group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:px-0 group-data-[state=collapsed]:[&_ul]:items-center">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" className="px-1" asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            className="h-12 py-1 px-2"
+                            asChild
+                        >
                             <Link href="/dashboard">
-                                <div className="flex flex-1 items-center gap-2 overflow-hidden group-data-[state=collapsed]:justify-center">
-                                    <div className="bg-primary text-primary-foreground flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
-                                        <Sparkles className="size-4" />
-                                    </div>
-                                    <div className="grid flex-1 text-left text-lg leading-tight min-w-0 group-data-[state=collapsed]:hidden">
-                                        <span className="font-heading font-semibold truncate">
-                                            Co-Creator AI
-                                        </span>
+                                <div className="flex h-full w-fit max-w-full shrink-0 items-center justify-start overflow-hidden group-data-[state=collapsed]:justify-center">
+                                    <div className="relative h-full min-h-8 w-auto shrink-0 overflow-hidden rounded-lg group-data-[state=collapsed]:size-8 group-data-[state=collapsed]:h-8 group-data-[state=collapsed]:w-8">
+                                        <Image
+                                            src="/logo.png"
+                                            alt="Co-Creator AI"
+                                            width={160}
+                                            height={56}
+                                            className="h-full w-auto object-contain object-left group-data-[state=collapsed]:hidden"
+                                        />
+                                        <Image
+                                            src="/icon.png"
+                                            alt="Co-Creator AI"
+                                            width={32}
+                                            height={32}
+                                            className="absolute inset-0 hidden size-full object-contain group-data-[state=collapsed]:block"
+                                        />
                                     </div>
                                 </div>
                             </Link>
@@ -171,26 +210,48 @@ export function AppSidebar({
                                                         className="flex flex-1 items-center gap-2 overflow-hidden group-data-[state=collapsed]:justify-center"
                                                         initial="rest"
                                                         whileHover="hover"
-                                                        variants={navHoverVariants}
+                                                        variants={
+                                                            navHoverVariants
+                                                        }
                                                         onMouseEnter={
                                                             item.animatedIconKey
-                                                                ? () => animatedRefs[item.animatedIconKey!].current?.startAnimation()
+                                                                ? () =>
+                                                                      animatedRefs[
+                                                                          item
+                                                                              .animatedIconKey!
+                                                                      ].current?.startAnimation()
                                                                 : undefined
                                                         }
                                                         onMouseLeave={
                                                             item.animatedIconKey
-                                                                ? () => animatedRefs[item.animatedIconKey!].current?.stopAnimation()
+                                                                ? () =>
+                                                                      animatedRefs[
+                                                                          item
+                                                                              .animatedIconKey!
+                                                                      ].current?.stopAnimation()
                                                                 : undefined
                                                         }
                                                     >
                                                         {item.animatedIconKey ? (
                                                             (() => {
-                                                                const IconComponent = animatedIcons[item.animatedIconKey];
-                                                                const iconRef = animatedRefs[item.animatedIconKey];
+                                                                const IconComponent =
+                                                                    animatedIcons[
+                                                                        item
+                                                                            .animatedIconKey
+                                                                    ];
+                                                                const iconRef =
+                                                                    animatedRefs[
+                                                                        item
+                                                                            .animatedIconKey
+                                                                    ];
                                                                 return (
                                                                     <IconComponent
-                                                                        ref={iconRef as React.Ref<AnimatedIconRef>}
-                                                                        size={16}
+                                                                        ref={
+                                                                            iconRef as React.Ref<AnimatedIconRef>
+                                                                        }
+                                                                        size={
+                                                                            16
+                                                                        }
                                                                         className="size-4 shrink-0"
                                                                     />
                                                                 );
@@ -200,7 +261,9 @@ export function AppSidebar({
                                                                 <item.icon className="size-4 shrink-0" />
                                                             </SidebarNavIcon>
                                                         )}
-                                                        <span className="group-data-[state=collapsed]:hidden">{item.title}</span>
+                                                        <span className="group-data-[state=collapsed]:hidden">
+                                                            {item.title}
+                                                        </span>
                                                     </motion.div>
                                                 </Link>
                                             </SidebarMenuButton>

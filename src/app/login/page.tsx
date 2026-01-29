@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { LoginForm } from "@/components/login-form";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description:
+    "Sign in to Co-Creator AI with Google. One place to manage your channel, generate on-brand ideas, scripts, and copy for TikTok, Instagram, and YouTube Shorts.",
+  robots: { index: false, follow: false },
+};
 
 export default async function LoginPage() {
   const supabase = await createClient();
