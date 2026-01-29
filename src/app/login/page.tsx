@@ -4,9 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { LoginForm } from "@/components/login-form";
+import { pageTitle } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "Sign in",
+  title: pageTitle("Sign in"),
   description:
     "Sign in to Co-Creator AI with Google. One place to manage your channel, generate on-brand ideas, scripts, and copy for TikTok, Instagram, and YouTube Shorts.",
   robots: { index: false, follow: false },

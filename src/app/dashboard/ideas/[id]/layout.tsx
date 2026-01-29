@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getChannelByUserId } from "@/lib/db/queries";
-import { getIdeaByIdForChannel } from "@/lib/db/queries";
+import { getChannelByUserId, getIdeaByIdForChannel } from "@/lib/db/queries";
+import { pageTitle } from "@/lib/metadata";
 
 const IDEA_TITLE_MAX_LENGTH = 50;
 
@@ -23,19 +23,19 @@ export async function generateMetadata({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { title: "Idea" };
+    return { title: pageTitle("Idea") };
   }
   const channel = await getChannelByUserId(user.id);
   if (!channel) {
-    return { title: "Idea" };
+    return { title: pageTitle("Idea") };
   }
   const idea = await getIdeaByIdForChannel(ideaId, channel.id);
   if (!idea) {
-    return { title: "Idea" };
+    return { title: pageTitle("Idea") };
   }
-  const title = truncateForTitle(idea.content);
+  const segment = truncateForTitle(idea.content) || "Idea";
   return {
-    title: title || "Idea",
+    title: pageTitle(segment),
     description: `Generate scripts, hooks, titles, and descriptions from this idea. Co-Creator AI keeps your channel context so every output stays on-brand.`,
   };
 }

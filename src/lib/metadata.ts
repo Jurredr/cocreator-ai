@@ -21,8 +21,10 @@ export const DEFAULT_KEYWORDS = [
   "on-brand copy",
 ];
 
-/** Title template for all pages: "%s · Co-Creator AI" */
-export const TITLE_TEMPLATE = `%s · ${SITE_NAME}`;
+/** Build full page title so the brand always appears: "PageName · Co-Creator AI" */
+export function pageTitle(segment: string): string {
+  return `${segment} · ${SITE_NAME}`;
+}
 
 export const ROOT_METADATA = {
   metadataBase: new URL(
@@ -30,7 +32,6 @@ export const ROOT_METADATA = {
   ),
   title: {
     default: SITE_NAME,
-    template: TITLE_TEMPLATE,
   },
   description: DEFAULT_DESCRIPTION,
   keywords: DEFAULT_KEYWORDS,

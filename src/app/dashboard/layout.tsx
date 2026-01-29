@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { pageTitle } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: pageTitle("Dashboard"),
   description:
     "Your content command center. See recent ideas and scripts, generate new ideas, and jump into your B-roll library, channel profile, and performance.",
   robots: { index: false, follow: false },
