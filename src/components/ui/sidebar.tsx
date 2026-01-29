@@ -24,7 +24,7 @@ function useSidebar() {
 }
 
 const SIDEBAR_WIDTH = "16rem";
-const SIDEBAR_WIDTH_COLLAPSED = "3rem";
+const SIDEBAR_WIDTH_COLLAPSED = "3.5rem";
 
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
@@ -141,7 +141,11 @@ const SidebarContent = React.forwardRef<
   <div
     ref={ref}
     data-sidebar="content"
-    className={cn("flex flex-1 flex-col gap-2 overflow-auto p-2 group-data-[state=collapsed]:items-center", className)}
+    className={cn(
+      "flex flex-1 flex-col gap-2 overflow-auto p-2",
+      "group-data-[state=collapsed]:items-center group-data-[state=collapsed]:px-0",
+      className
+    )}
     {...props}
   />
 ));
@@ -154,7 +158,11 @@ const SidebarFooter = React.forwardRef<
   <div
     ref={ref}
     data-sidebar="footer"
-    className={cn("mt-auto flex flex-col gap-2 p-2 group-data-[state=collapsed]:items-center", className)}
+    className={cn(
+      "mt-auto flex flex-col gap-2 p-2",
+      "group-data-[state=collapsed]:items-center group-data-[state=collapsed]:px-0",
+      className
+    )}
     {...props}
   />
 ));
@@ -167,7 +175,11 @@ const SidebarGroup = React.forwardRef<
   <div
     ref={ref}
     data-sidebar="group"
-    className={cn("relative flex w-full min-w-0 flex-col p-2 group-data-[state=collapsed]:items-center", className)}
+    className={cn(
+      "relative flex w-full min-w-0 flex-col p-2",
+      "group-data-[state=collapsed]:items-center group-data-[state=collapsed]:p-0",
+      className
+    )}
     {...props}
   />
 ));
@@ -226,14 +238,18 @@ const SidebarMenuItem = React.forwardRef<
   <li
     ref={ref}
     data-sidebar="menu-item"
-    className={cn("group/menu-item relative flex w-full min-w-0", className)}
+    className={cn(
+      "group/menu-item relative flex w-full min-w-0",
+      "group-data-[state=collapsed]:w-8 group-data-[state=collapsed]:justify-center",
+      className
+    )}
     {...props}
   />
 ));
 SidebarMenuItem.displayName = "SidebarMenuItem";
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] duration-200 ease-linear focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[active]/menu-item:bg-sidebar-accent group-has-data-[active]/menu-item:text-sidebar-accent-foreground group-has-data-[active]/menu-item:font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[state=collapsed]:!size-8 group-data-[state=collapsed]:!p-2 group-data-[state=collapsed]:[&>span:last-child]:hidden [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] duration-200 ease-linear focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[active]/menu-item:bg-sidebar-accent group-has-data-[active]/menu-item:text-sidebar-accent-foreground group-has-data-[active]/menu-item:font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[state=collapsed]:!size-8 group-data-[state=collapsed]:!min-w-8 group-data-[state=collapsed]:!justify-center group-data-[state=collapsed]:!p-0 group-data-[state=collapsed]:[&>span:last-child]:hidden group-data-[state=collapsed]:[&>*:not(:first-child)]:hidden [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {

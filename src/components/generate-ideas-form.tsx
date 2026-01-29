@@ -27,7 +27,8 @@ export function GenerateIdeasForm({
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [ideaIds, setIdeaIds] = useState<string[]>([]);
-  const [bucketId, setBucketId] = useState<string>("");
+  const ANY_BUCKET = "__any";
+  const [bucketId, setBucketId] = useState<string>(ANY_BUCKET);
   const [roughIdea, setRoughIdea] = useState("");
 
   async function handleGenerate() {
@@ -35,7 +36,7 @@ export function GenerateIdeasForm({
     setIdeaIds([]);
     try {
       const formData = new FormData();
-      if (bucketId) formData.set("bucketId", bucketId);
+      if (bucketId && bucketId !== ANY_BUCKET) formData.set("bucketId", bucketId);
       if (roughIdea.trim()) formData.set("roughIdea", roughIdea.trim());
       const result = await generateAndSaveIdeas(formData);
       if ("error" in result) {
@@ -61,7 +62,7 @@ export function GenerateIdeasForm({
               <SelectValue placeholder="Any bucket" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Any bucket</SelectItem>
+              <SelectItem value={ANY_BUCKET}>Any bucket</SelectItem>
               {buckets.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}

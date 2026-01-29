@@ -46,13 +46,23 @@ export default function IdeasPage() {
   async function handleDelete(ideaId: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!confirm("Delete this idea? This cannot be undone.")) return;
+
+    const key = queryKeys.me.ideas();
+    const previous = queryClient.getQueryData<IdeasData>(key);
+    queryClient.setQueryData<IdeasData>(key, (old) =>
+      old
+        ? { ...old, ideas: (old.ideas ?? []).filter((i) => i.id !== ideaId) }
+        : old
+    );
+
     const result = await deleteIdea(ideaId);
     if (result && "error" in result) {
+      queryClient.setQueryData(key, previous);
       toast.error(result.error);
       return;
     }
     toast.success("Idea deleted");
-    void queryClient.invalidateQueries({ queryKey: queryKeys.me.ideas() });
   }
 
   if (isLoading) {
