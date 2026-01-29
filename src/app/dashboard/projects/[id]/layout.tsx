@@ -40,7 +40,7 @@ export async function generateMetadata({
   };
 }
 
-export default function IdeaDetailLayout({
+export default function ProjectDetailLayout({
   children,
 }: {
   children: React.ReactNode;

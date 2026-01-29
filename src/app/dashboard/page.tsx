@@ -22,15 +22,16 @@ type Channel = {
   goals: string | null;
 };
 
-type Idea = {
+type Project = {
   id: string;
   content: string;
+  status: string;
   createdAt: string;
 };
 
 type DashboardData = {
   channel: Channel | null;
-  recentIdeas: Idea[];
+  recentProjects: Project[];
 };
 
 export default function DashboardPage() {
@@ -47,7 +48,7 @@ export default function DashboardPage() {
   useRedirectOnUnauthorized(isError, error ?? null);
 
   const channel = data?.channel ?? null;
-  const recentIdeas = data?.recentIdeas ?? [];
+  const recentProjects = data?.recentProjects ?? [];
 
   if (isLoading) {
     return (
@@ -93,18 +94,17 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="font-heading flex items-center gap-2">
                 <Sparkles className="size-5 text-primary" />
-                Generate new idea
+                New project
               </CardTitle>
               <CardDescription>
-                Get AI-generated ideas based on your channel, buckets, and past
-                content.
+                Open a canvas and build from idea to script with AI assistance.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild size="lg">
-                <Link href="/dashboard/ideas/new">
+                <Link href="/dashboard/projects">
                   <Lightbulb className="size-4" />
-                  Generate idea
+                  Open projects
                 </Link>
               </Button>
             </CardContent>
@@ -112,31 +112,34 @@ export default function DashboardPage() {
 
           <section>
             <h2 className="font-heading mb-4 text-xl font-semibold">
-              Recent ideas
+              Recent projects
             </h2>
-            {recentIdeas.length === 0 ? (
+            {recentProjects.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <p className="text-muted-foreground mb-4 text-center">
-                    No ideas yet. Generate your first idea to get started.
+                    No projects yet. Create a project to get started.
                   </p>
                   <Button asChild>
-                    <Link href="/dashboard/ideas/new">Generate idea</Link>
+                    <Link href="/dashboard/projects">Open projects</Link>
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               <ul className="flex flex-col gap-3">
-                {recentIdeas.map((idea) => (
-                  <li key={idea.id}>
-                    <Link href={`/dashboard/ideas/${idea.id}`}>
+                {recentProjects.map((project) => (
+                  <li key={project.id}>
+                    <Link href={`/dashboard/projects/${project.id}`}>
                       <Card className="transition-colors hover:bg-muted/50">
                         <CardContent className="p-4">
+                          <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium capitalize bg-muted/80 mb-2">
+                            {project.status}
+                          </span>
                           <p className="line-clamp-2 text-sm">
-                            {idea.content}
+                            {project.content?.trim() || "Untitled project"}
                           </p>
                           <p className="text-muted-foreground mt-1 text-xs">
-                            {new Date(idea.createdAt).toLocaleDateString()}
+                            {new Date(project.createdAt).toLocaleDateString()}
                           </p>
                         </CardContent>
                       </Card>

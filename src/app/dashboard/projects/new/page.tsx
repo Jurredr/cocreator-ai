@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function IdeasRedirectPage() {
+export default function NewProjectRedirectPage() {
   const router = useRouter();
   useEffect(() => {
     router.replace("/dashboard/projects");

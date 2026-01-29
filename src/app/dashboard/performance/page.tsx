@@ -78,7 +78,7 @@ export default function PerformancePage() {
           </CardTitle>
           <CardDescription>
             Platform, URL, and optional metrics (views, likes, etc.). You can
-            link to an idea if this content came from one.
+            link to a project if this content came from one.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -30,7 +30,21 @@ export const buckets = pgTable("buckets", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const ideas = pgTable("ideas", {
+export const projectStatusEnum = pgEnum("project_status", [
+  "idea",
+  "scripting",
+  "producing",
+  "uploaded",
+]);
+
+export type ProjectStatus =
+  | "idea"
+  | "scripting"
+  | "producing"
+  | "uploaded";
+
+/** Stored graph: { nodes: Array<{id, type, position: {x,y}, data}>, edges: Array<{id, source, target}> } */
+export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().defaultRandom(),
   channelId: uuid("channel_id")
     .notNull()
@@ -38,7 +52,11 @@ export const ideas = pgTable("ideas", {
   bucketId: uuid("bucket_id").references(() => buckets.id, {
     onDelete: "set null",
   }),
-  content: text("content").notNull(),
+  /** Root idea text; also used when graph_data is null (legacy). */
+  content: text("content").notNull().default(""),
+  /** React Flow graph: nodes (idea, subIdea, hook, script, description, hashtags) + edges. */
+  graphData: jsonb("graph_data"),
+  status: projectStatusEnum("status").notNull().default("idea"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -59,9 +77,9 @@ export type ContentOutputType =
 
 export const contentOutputs = pgTable("content_outputs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  ideaId: uuid("idea_id")
+  projectId: uuid("project_id")
     .notNull()
-    .references(() => ideas.id, { onDelete: "cascade" }),
+    .references(() => projects.id, { onDelete: "cascade" }),
   type: contentOutputTypeEnum("type").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -78,7 +96,7 @@ export const publishedContent = pgTable("published_content", {
   channelId: uuid("channel_id")
     .notNull()
     .references(() => channels.id, { onDelete: "cascade" }),
-  ideaId: uuid("idea_id").references(() => ideas.id, { onDelete: "set null" }),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
   platform: platformEnum("platform").notNull(),
   url: text("url").notNull(),
   views: integer("views"),
@@ -127,7 +145,7 @@ export const hookInspiration = pgTable("hook_inspiration", {
 // Relations (explicit fields/references so Drizzle can infer joins)
 export const channelsRelations = relations(channels, ({ many }) => ({
   buckets: many(buckets, { relationName: "channelBuckets" }),
-  ideas: many(ideas, { relationName: "channelIdeas" }),
+  projects: many(projects, { relationName: "channelProjects" }),
   publishedContent: many(publishedContent, { relationName: "channelPublishedContent" }),
   broll: many(broll, { relationName: "channelBroll" }),
   inspirationVideos: many(channelInspirationVideos, { relationName: "channelInspirationVideos" }),
@@ -139,28 +157,28 @@ export const bucketsRelations = relations(buckets, ({ one, many }) => ({
     references: [channels.id],
     relationName: "channelBuckets",
   }),
-  ideas: many(ideas, { relationName: "bucketIdeas" }),
+  projects: many(projects, { relationName: "bucketProjects" }),
 }));
 
-export const ideasRelations = relations(ideas, ({ one, many }) => ({
+export const projectsRelations = relations(projects, ({ one, many }) => ({
   channel: one(channels, {
-    fields: [ideas.channelId],
+    fields: [projects.channelId],
     references: [channels.id],
-    relationName: "channelIdeas",
+    relationName: "channelProjects",
   }),
   bucket: one(buckets, {
-    fields: [ideas.bucketId],
+    fields: [projects.bucketId],
     references: [buckets.id],
-    relationName: "bucketIdeas",
+    relationName: "bucketProjects",
   }),
   contentOutputs: many(contentOutputs),
-  publishedContent: many(publishedContent, { relationName: "ideaPublishedContent" }),
+  publishedContent: many(publishedContent, { relationName: "projectPublishedContent" }),
 }));
 
 export const contentOutputsRelations = relations(contentOutputs, ({ one }) => ({
-  idea: one(ideas, {
-    fields: [contentOutputs.ideaId],
-    references: [ideas.id],
+  project: one(projects, {
+    fields: [contentOutputs.projectId],
+    references: [projects.id],
   }),
 }));
 
@@ -172,10 +190,10 @@ export const publishedContentRelations = relations(
       references: [channels.id],
       relationName: "channelPublishedContent",
     }),
-    idea: one(ideas, {
-      fields: [publishedContent.ideaId],
-      references: [ideas.id],
-      relationName: "ideaPublishedContent",
+    project: one(projects, {
+      fields: [publishedContent.projectId],
+      references: [projects.id],
+      relationName: "projectPublishedContent",
     }),
   })
 );

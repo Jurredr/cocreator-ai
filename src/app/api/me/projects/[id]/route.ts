@@ -86,18 +86,25 @@ export async function PATCH(
   if (!project) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  let body: { graph_data?: unknown };
+  let body: { graph_data?: unknown; status?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  if (body.graph_data === undefined) {
-    return NextResponse.json({ error: "graph_data required" }, { status: 400 });
+  const updates: { graphData?: unknown; status?: "idea" | "scripting" | "producing" | "uploaded" } = {};
+  if (body.graph_data !== undefined) updates.graphData = body.graph_data;
+  if (body.status !== undefined) {
+    if (["idea", "scripting", "producing", "uploaded"].includes(body.status)) {
+      updates.status = body.status as "idea" | "scripting" | "producing" | "uploaded";
+    }
+  }
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "Provide graph_data and/or status" }, { status: 400 });
   }
   await db
     .update(projects)
-    .set({ graphData: body.graph_data })
+    .set(updates)
     .where(eq(projects.id, projectId));
   return NextResponse.json({ ok: true });
 }

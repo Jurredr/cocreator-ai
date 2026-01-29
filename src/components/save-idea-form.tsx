@@ -22,10 +22,10 @@ export function SaveIdeaForm() {
         toast.error(result.error);
         return;
       }
-      toast.success("Idea saved");
-      void queryClient.invalidateQueries({ queryKey: queryKeys.me.ideas() });
+      toast.success("Project saved");
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me.projects() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.me.dashboard() });
-      router.push(`/dashboard/ideas/${result.ideaId}`);
+      router.push(`/dashboard/projects/${result.projectId}`);
     } finally {
       setLoading(false);
     }

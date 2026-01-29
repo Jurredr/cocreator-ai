@@ -78,11 +78,11 @@ export function AddPublishedContentForm({
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="ideaId">Idea ID (optional)</Label>
+        <Label htmlFor="projectId">Project ID (optional)</Label>
         <Input
-          id="ideaId"
-          name="ideaId"
-          placeholder="Paste idea UUID to link"
+          id="projectId"
+          name="projectId"
+          placeholder="Paste project UUID to link"
         />
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

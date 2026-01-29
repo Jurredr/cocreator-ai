@@ -8,11 +8,11 @@ import { Loader2 } from "lucide-react";
 import type { ContentOutputType } from "@/lib/db/schema";
 
 export function GenerateOutputButtons({
-  ideaId,
+  projectId,
   type,
   onSuccess,
 }: {
-  ideaId: string;
+  projectId: string;
   type: ContentOutputType;
   onSuccess?: () => void;
 }) {
@@ -21,7 +21,7 @@ export function GenerateOutputButtons({
   async function handleGenerate() {
     setLoading(true);
     try {
-      const result = await generateOutput(ideaId, type);
+      const result = await generateOutput(projectId, type);
       if ("error" in result) {
         toast.error(result.error);
         return;

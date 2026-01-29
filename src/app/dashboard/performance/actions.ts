@@ -31,7 +31,7 @@ export async function addPublishedContent(formData: FormData): Promise<
   }
   const platform = parsePlatform((formData.get("platform") as string) ?? "");
   const url = (formData.get("url") as string)?.trim();
-  const ideaId = (formData.get("ideaId") as string)?.trim() || null;
+  const projectId = (formData.get("projectId") as string)?.trim() || null;
   if (!platform || !url) {
     return { error: "Platform and URL are required" };
   }
@@ -43,7 +43,7 @@ export async function addPublishedContent(formData: FormData): Promise<
 
   await db.insert(publishedContent).values({
     channelId: channel.id,
-    ideaId: ideaId || undefined,
+    projectId: projectId || undefined,
     platform,
     url,
     views: views ? parseInt(String(views), 10) : null,

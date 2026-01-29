@@ -45,7 +45,7 @@ export function GenerateIdeasForm({
       }
       toast.success("Ideas generated");
       setIdeaIds(result.ideaIds);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.me.ideas() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me.projects() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.me.dashboard() });
     } finally {
       setLoading(false);
@@ -103,10 +103,10 @@ export function GenerateIdeasForm({
           {ideaIds.map((id, i) => (
             <span key={id}>
               <Link
-                href={`/dashboard/ideas/${id}`}
+                href={`/dashboard/projects/${id}`}
                 className="text-primary underline"
               >
-                View idea {i + 1}
+                View project {i + 1}
               </Link>
               {i < ideaIds.length - 1 ? ", " : ""}
             </span>

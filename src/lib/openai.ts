@@ -94,6 +94,70 @@ export async function generateIdeas(params: {
 }
 
 /**
+ * Brainstorm sub-ideas / parts for a given idea (for the graph canvas).
+ */
+export async function brainstormSubIdeas(params: {
+  channelContext: string;
+  parentIdeaContent: string;
+  count?: number;
+}): Promise<string[]> {
+  const client = getOpenAIClient();
+  const count = params.count ?? 4;
+  const res = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are a creative content strategist for short-form video. Given a main idea, suggest concrete sub-ideas or parts (angles, beats, sections) that could be explored. Return only a JSON object with key "ideas" whose value is an array of strings, each 1-2 sentences. Example: { "ideas": ["Part one...", "Part two..."] }`,
+      },
+      {
+        role: "user",
+        content: `Channel context:\n${params.channelContext}\n\nMain idea:\n${params.parentIdeaContent}\n\nSuggest ${count} sub-ideas or parts for this idea. Return JSON: { "ideas": ["...", "..."] }`,
+      },
+    ],
+    response_format: { type: "json_object" },
+  });
+  const raw = res.choices[0]?.message?.content;
+  if (!raw) {
+    throw new Error("No response from OpenAI");
+  }
+  const parsed = JSON.parse(raw) as { ideas?: string[] };
+  const arr = parsed.ideas ?? [];
+  return arr.slice(0, count);
+}
+
+/**
+ * Brainstorm or refine a single note/card (e.g. expand a sub-idea with AI).
+ */
+export async function brainstormNote(params: {
+  channelContext: string;
+  noteContent: string;
+  instruction?: string;
+}): Promise<string> {
+  const client = getOpenAIClient();
+  const instruction =
+    params.instruction ?? "Expand and refine this note into a clearer, more actionable version. Keep the same intent.";
+  const res = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are a creative content strategist. Channel context:\n${params.channelContext}\n\n${instruction} Return only the refined text, no labels or quotes.`,
+      },
+      {
+        role: "user",
+        content: params.noteContent,
+      },
+    ],
+  });
+  const raw = res.choices[0]?.message?.content;
+  if (!raw) {
+    throw new Error("No response from OpenAI");
+  }
+  return raw.trim();
+}
+
+/**
  * Brainstorm or refine goals and buckets for a channel.
  */
 export async function brainstormGoalsAndBuckets(params: {

@@ -18,10 +18,11 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   ideas: "Ideas",
+  projects: "Projects",
   channel: "Channel",
   broll: "B-roll library",
   performance: "Performance",
-  new: "New idea",
+  new: "New project",
 };
 
 function getBreadcrumbItems(pathname: string) {
@@ -36,7 +37,7 @@ function getBreadcrumbItems(pathname: string) {
     const segment = segments[i];
     const label =
       SEGMENT_LABELS[segment] ??
-      (segment.length === 36 ? "Idea" : segment);
+      (segment.length === 36 ? "Project" : segment);
     result.push({
       label,
       href: path,

@@ -3,7 +3,7 @@ import { db } from "./index";
 import {
   channels,
   buckets,
-  ideas,
+  projects,
   contentOutputs,
   publishedContent,
   broll,
@@ -28,38 +28,38 @@ export async function getChannelWithBuckets(channelId: string) {
   return channel ?? null;
 }
 
-export async function getIdeaByIdForChannel(ideaId: string, channelId: string) {
-  const [idea] = await db
+export async function getProjectByIdForChannel(projectId: string, channelId: string) {
+  const [project] = await db
     .select()
-    .from(ideas)
-    .where(and(eq(ideas.id, ideaId), eq(ideas.channelId, channelId)))
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.channelId, channelId)))
     .limit(1);
-  return idea ?? null;
+  return project ?? null;
 }
 
-export async function getRecentIdeas(channelId: string, limit = 10) {
+export async function getRecentProjects(channelId: string, limit = 10) {
   return db
     .select()
-    .from(ideas)
-    .where(eq(ideas.channelId, channelId))
-    .orderBy(desc(ideas.createdAt))
+    .from(projects)
+    .where(eq(projects.channelId, channelId))
+    .orderBy(desc(projects.createdAt))
     .limit(limit);
 }
 
-export async function getIdeasWithOutputs(channelId: string, limit = 20) {
+export async function getProjectsWithOutputs(channelId: string, limit = 20) {
   const list = await db
     .select()
-    .from(ideas)
-    .where(eq(ideas.channelId, channelId))
-    .orderBy(desc(ideas.createdAt))
+    .from(projects)
+    .where(eq(projects.channelId, channelId))
+    .orderBy(desc(projects.createdAt))
     .limit(limit);
   const withOutputs = await Promise.all(
-    list.map(async (idea) => {
+    list.map(async (project) => {
       const outputs = await db
         .select()
         .from(contentOutputs)
-        .where(eq(contentOutputs.ideaId, idea.id));
-      return { ...idea, outputs };
+        .where(eq(contentOutputs.projectId, project.id));
+      return { ...project, outputs };
     })
   );
   return withOutputs;

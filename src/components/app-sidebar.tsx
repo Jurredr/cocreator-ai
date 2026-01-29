@@ -65,8 +65,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
         label: 'Content',
         items: [
             {
-                title: 'Ideas',
-                url: '/dashboard/ideas',
+                title: 'Projects',
+                url: '/dashboard/projects',
                 icon: ZapIcon,
                 animatedIconKey: 'flask',
             },
