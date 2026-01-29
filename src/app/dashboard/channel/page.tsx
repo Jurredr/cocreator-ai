@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChannelForm } from "@/components/channel-form";
 import { BucketList } from "@/components/bucket-list";
+import { InspirationVideosList } from "@/components/inspiration-videos-list";
 import { BrainstormBlock } from "@/components/brainstorm-block";
 import {
   Card,
@@ -28,12 +29,19 @@ type Bucket = {
   description: string | null;
 };
 
+type InspirationVideo = {
+  id: string;
+  url: string;
+  note: string | null;
+};
+
 type ChannelWithBuckets = {
   id: string;
   name: string;
   coreAudience: string | null;
   goals: string | null;
   buckets: Bucket[];
+  inspirationVideos: InspirationVideo[];
 };
 
 type ChannelData = {
@@ -108,6 +116,22 @@ export default function ChannelPage() {
               })) ?? []
             }
           />
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading">Inspiration videos</CardTitle>
+              <CardDescription>
+                Video links that inspire the general vibe of your channel. Add a
+                note on what you like about each one.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InspirationVideosList
+                videos={channelWithBuckets?.inspirationVideos ?? []}
+                channelId={channel.id}
+                onSuccess={invalidateChannel}
+              />
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle className="font-heading">Content buckets</CardTitle>

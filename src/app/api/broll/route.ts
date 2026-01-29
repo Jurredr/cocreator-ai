@@ -47,8 +47,9 @@ export async function POST(request: Request) {
     filename: string;
     thumbnailDataUrl: string;
     description?: string;
+    recordingDate?: string | null;
   };
-  const { filename, thumbnailDataUrl, description } = body;
+  const { filename, thumbnailDataUrl, description, recordingDate } = body;
   if (!filename || !thumbnailDataUrl) {
     return NextResponse.json(
       { error: "filename and thumbnailDataUrl required" },
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
       filename,
       thumbnailDataUrl,
       description: description ?? null,
+      recordingDate: recordingDate ? new Date(recordingDate) : null,
     })
     .returning();
   if (!inserted) {

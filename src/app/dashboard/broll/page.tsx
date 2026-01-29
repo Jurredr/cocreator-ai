@@ -21,6 +21,8 @@ type BrollItem = {
   filename: string;
   thumbnailDataUrl: string;
   description: string | null;
+  recordingDate: string | null;
+  createdAt: string;
 };
 
 export default function BrollPage() {
@@ -47,6 +49,40 @@ export default function BrollPage() {
   const invalidateBroll = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.broll() });
   };
+
+  async function handleDelete(id: string) {
+    const key = queryKeys.broll();
+    const previous = queryClient.getQueryData<BrollItem[]>(key);
+    queryClient.setQueryData<BrollItem[]>(key, (old) =>
+      (old ?? []).filter((item) => item.id !== id)
+    );
+    try {
+      const res = await fetch(`/api/broll/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to delete");
+      }
+    } catch (err) {
+      queryClient.setQueryData(key, previous);
+      throw err;
+    }
+  }
+
+  async function handleEdit(
+    id: string,
+    updates: { filename?: string; description?: string }
+  ) {
+    const res = await fetch(`/api/broll/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? "Failed to update");
+    }
+    invalidateBroll();
+  }
 
   if (isLoading) {
     return (
@@ -90,7 +126,11 @@ export default function BrollPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BrollList items={items} />
+          <BrollList
+            items={items}
+            onDelete={handleDelete}
+            onEdit={handleEdit}
+          />
         </CardContent>
       </Card>
     </div>

@@ -99,6 +99,20 @@ export const broll = pgTable("broll", {
   filename: text("filename").notNull(),
   thumbnailDataUrl: text("thumbnail_data_url").notNull(),
   description: text("description"),
+  /** Recording date from video file metadata (e.g. file lastModified or embedded creation time). */
+  recordingDate: timestamp("recording_date"),
+  /** When the clip was added to the b-roll library. */
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** Video links that inspire the channel vibe; optional note on what the user likes. */
+export const channelInspirationVideos = pgTable("channel_inspiration_videos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  channelId: uuid("channel_id")
+    .notNull()
+    .references(() => channels.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  note: text("note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -116,6 +130,7 @@ export const channelsRelations = relations(channels, ({ many }) => ({
   ideas: many(ideas, { relationName: "channelIdeas" }),
   publishedContent: many(publishedContent, { relationName: "channelPublishedContent" }),
   broll: many(broll, { relationName: "channelBroll" }),
+  inspirationVideos: many(channelInspirationVideos, { relationName: "channelInspirationVideos" }),
 }));
 
 export const bucketsRelations = relations(buckets, ({ one, many }) => ({
@@ -172,3 +187,14 @@ export const brollRelations = relations(broll, ({ one }) => ({
     relationName: "channelBroll",
   }),
 }));
+
+export const channelInspirationVideosRelations = relations(
+  channelInspirationVideos,
+  ({ one }) => ({
+    channel: one(channels, {
+      fields: [channelInspirationVideos.channelId],
+      references: [channels.id],
+      relationName: "channelInspirationVideos",
+    }),
+  })
+);

@@ -33,6 +33,7 @@ export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
     setLoading(true);
     try {
       const thumbnailDataUrl = await extractThumbnailFromVideo(selectedFile, 1);
+      const recordingDate = new Date(selectedFile.lastModified).toISOString();
       const res = await fetch("/api/broll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,6 +41,7 @@ export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
           filename: selectedFile.name,
           thumbnailDataUrl,
           description: description.trim() || undefined,
+          recordingDate,
         }),
       });
       const data = await res.json();

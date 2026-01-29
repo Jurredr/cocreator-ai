@@ -23,7 +23,7 @@ export async function getChannelByUserId(userId: string) {
 export async function getChannelWithBuckets(channelId: string) {
   const channel = await db.query.channels.findFirst({
     where: eq(channels.id, channelId),
-    with: { buckets: true },
+    with: { buckets: true, inspirationVideos: true },
   });
   return channel ?? null;
 }

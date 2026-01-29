@@ -1,0 +1,1 @@
+ALTER TABLE "broll" ADD COLUMN "recording_date" timestamp;

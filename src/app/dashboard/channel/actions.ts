@@ -2,8 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
-import { channels, buckets } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { channels, buckets, channelInspirationVideos } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { brainstormGoalsAndBuckets } from "@/lib/openai";
 import { getChannelWithBuckets, getChannelByUserId } from "@/lib/db/queries";
@@ -161,4 +161,91 @@ export async function runBrainstorm(mode: "goals" | "buckets" | "both"): Promise
       error: e instanceof Error ? e.message : "Brainstorm failed",
     };
   }
+}
+
+export async function addInspirationVideo(formData: FormData): Promise<
+  { error: string } | { success: true }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+  const channel = await getChannelByUserId(user.id);
+  if (!channel) {
+    return { error: "Create a channel first" };
+  }
+  const url = (formData.get("url") as string)?.trim();
+  const note = (formData.get("note") as string)?.trim() || null;
+  if (!url) {
+    return { error: "Video URL is required" };
+  }
+  await db.insert(channelInspirationVideos).values({
+    channelId: channel.id,
+    url,
+    note,
+  });
+  revalidatePath("/dashboard/channel");
+  return { success: true };
+}
+
+export async function updateInspirationVideo(
+  id: string,
+  formData: FormData
+): Promise<{ error?: string } | { success: true }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+  const channel = await getChannelByUserId(user.id);
+  if (!channel) {
+    return { error: "Channel not found" };
+  }
+  const url = (formData.get("url") as string)?.trim();
+  const note = (formData.get("note") as string)?.trim() || null;
+  if (!url) {
+    return { error: "Video URL is required" };
+  }
+  await db
+    .update(channelInspirationVideos)
+    .set({ url, note })
+    .where(
+      and(
+        eq(channelInspirationVideos.id, id),
+        eq(channelInspirationVideos.channelId, channel.id)
+      )
+    );
+  revalidatePath("/dashboard/channel");
+  return { success: true };
+}
+
+export async function deleteInspirationVideo(id: string): Promise<
+  { error?: string } | { success: true }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+  const channel = await getChannelByUserId(user.id);
+  if (!channel) {
+    return { error: "Channel not found" };
+  }
+  await db
+    .delete(channelInspirationVideos)
+    .where(
+      and(
+        eq(channelInspirationVideos.id, id),
+        eq(channelInspirationVideos.channelId, channel.id)
+      )
+    );
+  revalidatePath("/dashboard/channel");
+  return { success: true };
 }
