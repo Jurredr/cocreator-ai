@@ -11,7 +11,8 @@ function getClient() {
     throw new Error("DATABASE_URL is not set");
   }
   if (!_client) {
-    _client = postgres(connectionString, { max: 10 });
+    // Use Supabase Connection pooler (port 6543, Transaction mode) in DATABASE_URL to avoid "max clients reached"
+    _client = postgres(connectionString, { max: 1 });
   }
   return _client;
 }

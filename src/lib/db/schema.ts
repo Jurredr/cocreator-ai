@@ -110,38 +110,65 @@ export const hookInspiration = pgTable("hook_inspiration", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Relations
+// Relations (explicit fields/references so Drizzle can infer joins)
 export const channelsRelations = relations(channels, ({ many }) => ({
-  buckets: many(buckets),
-  ideas: many(ideas),
-  publishedContent: many(publishedContent),
-  broll: many(broll),
+  buckets: many(buckets, { relationName: "channelBuckets" }),
+  ideas: many(ideas, { relationName: "channelIdeas" }),
+  publishedContent: many(publishedContent, { relationName: "channelPublishedContent" }),
+  broll: many(broll, { relationName: "channelBroll" }),
 }));
 
 export const bucketsRelations = relations(buckets, ({ one, many }) => ({
-  channel: one(channels),
-  ideas: many(ideas),
+  channel: one(channels, {
+    fields: [buckets.channelId],
+    references: [channels.id],
+    relationName: "channelBuckets",
+  }),
+  ideas: many(ideas, { relationName: "bucketIdeas" }),
 }));
 
 export const ideasRelations = relations(ideas, ({ one, many }) => ({
-  channel: one(channels),
-  bucket: one(buckets),
+  channel: one(channels, {
+    fields: [ideas.channelId],
+    references: [channels.id],
+    relationName: "channelIdeas",
+  }),
+  bucket: one(buckets, {
+    fields: [ideas.bucketId],
+    references: [buckets.id],
+    relationName: "bucketIdeas",
+  }),
   contentOutputs: many(contentOutputs),
-  publishedContent: many(publishedContent),
+  publishedContent: many(publishedContent, { relationName: "ideaPublishedContent" }),
 }));
 
 export const contentOutputsRelations = relations(contentOutputs, ({ one }) => ({
-  idea: one(ideas),
+  idea: one(ideas, {
+    fields: [contentOutputs.ideaId],
+    references: [ideas.id],
+  }),
 }));
 
 export const publishedContentRelations = relations(
   publishedContent,
   ({ one }) => ({
-    channel: one(channels),
-    idea: one(ideas),
+    channel: one(channels, {
+      fields: [publishedContent.channelId],
+      references: [channels.id],
+      relationName: "channelPublishedContent",
+    }),
+    idea: one(ideas, {
+      fields: [publishedContent.ideaId],
+      references: [ideas.id],
+      relationName: "ideaPublishedContent",
+    }),
   })
 );
 
 export const brollRelations = relations(broll, ({ one }) => ({
-  channel: one(channels),
+  channel: one(channels, {
+    fields: [broll.channelId],
+    references: [channels.id],
+    relationName: "channelBroll",
+  }),
 }));
