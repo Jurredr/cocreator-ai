@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { saveIdea } from "@/app/dashboard/ideas/actions";
+import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 export function SaveIdeaForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(formData: FormData) {
@@ -20,6 +23,8 @@ export function SaveIdeaForm() {
         return;
       }
       toast.success("Idea saved");
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me.ideas() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.me.dashboard() });
       router.push(`/dashboard/ideas/${result.ideaId}`);
     } finally {
       setLoading(false);

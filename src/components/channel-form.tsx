@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import type { channels } from "@/lib/db/schema";
-
-type Channel = typeof channels.$inferSelect;
-
-export function ChannelForm({ channel }: { channel?: Channel | null }) {
+export function ChannelForm({
+  channel,
+  onSuccess,
+}: {
+  channel?: { id?: string; name?: string; coreAudience?: string | null; goals?: string | null } | null;
+  onSuccess?: () => void;
+}) {
   const formAction = async (formData: FormData) => {
     const result = await createOrUpdateChannel(formData);
     if ("error" in result) {
@@ -17,6 +19,7 @@ export function ChannelForm({ channel }: { channel?: Channel | null }) {
       return;
     }
     toast.success("Channel saved");
+    onSuccess?.();
   };
 
   return (

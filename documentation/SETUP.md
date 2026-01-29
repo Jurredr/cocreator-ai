@@ -21,9 +21,9 @@ Copy `.env.example` to `.env.local` and fill in:
   - **Publishable key** (client-safe) → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
   - **Secret key** (server-only) → `SUPABASE_SECRET_KEY`
   - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
-- **Database:** In Supabase → **Project Settings → Database**, use the **Connection pooling** (Transaction mode) URI, **not** the direct connection.
-  - Choose **URI** and the **Transaction** (or "Session" pooler) tab — it uses **port 6543** and a host like `aws-0-<region>.pooler.supabase.com`.
-  - Put that URI in `DATABASE_URL`. Using the direct connection (port 5432) causes "max clients reached" with Next.js.
+- **Database:** In Supabase → **Project Settings → Database**, use the **Transaction** pooler URI, **not** Session or direct.
+  - Go to **Connection pooling** and select the **Transaction** mode URI (**port 6543**; host like `aws-0-<region>.pooler.supabase.com`).
+  - Put that URI in `DATABASE_URL`. If you use **Session** pooler or direct connection (port 5432), you will see `MaxClientsInSessionMode: max clients reached` under load—Session mode limits concurrent Postgres connections and Next.js can open many.
 - **OpenAI:** [platform.openai.com](https://platform.openai.com) → API key → `OPENAI_API_KEY`
 
 ## 3. Supabase Auth (Google OAuth)
@@ -44,7 +44,7 @@ bun run db:migrate     # Run migrations against DATABASE_URL
 bun run db:up           # Generate + migrate
 ```
 
-Ensure `DATABASE_URL` is set (use the **pooler** URI, port 6543, to avoid "max clients reached").
+Ensure `DATABASE_URL` is set to the **Transaction** pooler URI (port 6543), not Session or direct.
 
 ## 5. Run the app
 

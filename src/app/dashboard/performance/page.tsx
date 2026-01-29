@@ -1,29 +1,67 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { getChannelByUserId, getPublishedContentByChannelId } from "@/lib/db/queries";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { AddPublishedContentForm } from "@/components/add-published-content-form";
 import { PublishedContentList } from "@/components/published-content-list";
 import { BarChart3 } from "lucide-react";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchApi } from "@/lib/fetch-api";
+import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
+import type { PublishedContentListItem } from "@/components/published-content-list";
 
-export default async function PerformancePage() {
-  const supabase = await createClient();
+type PerformanceData = {
+  items: PublishedContentListItem[];
+};
+
+export default function PerformancePage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: queryKeys.me.performance(),
+    queryFn: () => fetchApi<PerformanceData>("/api/me/performance"),
+  });
+
+  useRedirectOnUnauthorized(isError, error ?? null);
+
+  useEffect(() => {
+    if (isError && error && (error as Error & { status?: number }).status === 400) {
+      router.replace("/dashboard");
+    }
+  }, [isError, error, router]);
+
+  const invalidatePerformance = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.me.performance() });
+  };
+
+  const items = data?.items ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-8 p-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-48 animate-pulse rounded-lg bg-muted" />
+      </div>
+    );
   }
-  const channel = await getChannelByUserId(user.id);
-  if (!channel) {
-    redirect("/dashboard");
-  }
-  const items = await getPublishedContentByChannelId(channel.id);
 
   return (
     <div className="flex flex-1 flex-col gap-8 p-6">
       <header>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
+        <h1 className="font-heading text-3xl font-semibold">
           Performance
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -44,7 +82,7 @@ export default async function PerformancePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <AddPublishedContentForm />
+          <AddPublishedContentForm onSuccess={invalidatePerformance} />
         </CardContent>
       </Card>
 
@@ -56,7 +94,7 @@ export default async function PerformancePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PublishedContentList items={items} />
+          <PublishedContentList items={items} onSuccess={invalidatePerformance} />
         </CardContent>
       </Card>
     </div>

@@ -1,28 +1,67 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getChannelByUserId, getRecentIdeas } from "@/lib/db/queries";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Sparkles, Lightbulb, ArrowRight } from "lucide-react";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchApi } from "@/lib/fetch-api";
+import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
+type Channel = {
+  id: string;
+  name: string;
+  coreAudience: string | null;
+  goals: string | null;
+};
+
+type Idea = {
+  id: string;
+  content: string;
+  createdAt: string;
+};
+
+type DashboardData = {
+  channel: Channel | null;
+  recentIdeas: Idea[];
+};
+
+export default function DashboardPage() {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return null;
-  }
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: queryKeys.me.dashboard(),
+    queryFn: () => fetchApi<DashboardData>("/api/me/dashboard"),
+  });
 
-  const channel = await getChannelByUserId(user.id);
-  const recentIdeas = channel
-    ? await getRecentIdeas(channel.id, 5)
-    : [];
+  useRedirectOnUnauthorized(isError, error ?? null);
+
+  const channel = data?.channel ?? null;
+  const recentIdeas = data?.recentIdeas ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-6 p-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-32 animate-pulse rounded-lg bg-muted" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
       <header className="flex flex-col gap-1">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
+        <h1 className="font-heading text-3xl font-semibold">
           Dashboard
         </h1>
         <p className="text-muted-foreground">

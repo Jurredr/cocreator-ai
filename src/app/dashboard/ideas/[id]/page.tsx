@@ -1,12 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
-import { getChannelByUserId } from "@/lib/db/queries";
-import { db } from "@/lib/db";
-import { ideas, contentOutputs } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+"use client";
+
+import { use, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GenerateOutputButtons } from "@/components/generate-output-buttons";
 import { CopyBlock } from "@/components/copy-block";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchApi } from "@/lib/fetch-api";
+import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
 import type { ContentOutputType } from "@/lib/db/schema";
 
 const OUTPUT_LABELS: Record<ContentOutputType, string> = {
@@ -17,49 +19,63 @@ const OUTPUT_LABELS: Record<ContentOutputType, string> = {
   hooks: "Hooks",
 };
 
-export default async function IdeaDetailPage({
+type IdeaDetailData = {
+  idea: { id: string; content: string; createdAt: string };
+  byType: Record<ContentOutputType, string>;
+};
+
+export default function IdeaDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id: ideaId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-  const channel = await getChannelByUserId(user.id);
-  if (!channel) {
-    redirect("/dashboard");
-  }
-  const [idea] = await db
-    .select()
-    .from(ideas)
-    .where(and(eq(ideas.id, ideaId), eq(ideas.channelId, channel.id)))
-    .limit(1);
-  if (!idea) {
-    notFound();
-  }
-  const outputs = await db
-    .select()
-    .from(contentOutputs)
-    .where(eq(contentOutputs.ideaId, idea.id))
-    .orderBy(desc(contentOutputs.createdAt));
+  const queryClient = useQueryClient();
+  const { id: ideaId } = use(params);
 
-  const byType = outputs.reduce(
-    (acc, o) => {
-      acc[o.type] = o.content;
-      return acc;
-    },
-    {} as Record<ContentOutputType, string>
-  );
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: queryKeys.me.idea(ideaId),
+    queryFn: () => fetchApi<IdeaDetailData>(`/api/me/ideas/${ideaId}`),
+    enabled: Boolean(ideaId),
+  });
+
+  useRedirectOnUnauthorized(isError, error ?? null);
+
+  useEffect(() => {
+    if (isError && error && (error as Error & { status?: number }).status === 404) {
+      notFound();
+    }
+  }, [isError, error]);
+
+  const invalidateIdea = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.me.idea(ideaId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.me.ideas() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.me.dashboard() });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-8 p-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-32 animate-pulse rounded-lg bg-muted" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const { idea, byType } = data;
 
   return (
     <div className="flex flex-1 flex-col gap-8 p-6">
       <header>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
+        <h1 className="font-heading text-3xl font-semibold">
           Idea
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -86,7 +102,11 @@ export default async function IdeaDetailPage({
               <CardTitle className="font-heading text-base">
                 {OUTPUT_LABELS[type]}
               </CardTitle>
-              <GenerateOutputButtons ideaId={idea.id} type={type} />
+              <GenerateOutputButtons
+                ideaId={idea.id}
+                type={type}
+                onSuccess={invalidateIdea}
+              />
             </CardHeader>
             <CardContent>
               {byType[type] ? (

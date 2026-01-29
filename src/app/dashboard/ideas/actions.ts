@@ -14,7 +14,7 @@ import { getChannelByUserId, getChannelWithBuckets } from "@/lib/db/queries";
 import { getHookInspirationSample } from "@/lib/hooks-file";
 import type { ContentOutputType } from "@/lib/db/schema";
 
-export async function generateAndSaveIdeas(_formData: FormData): Promise<
+export async function generateAndSaveIdeas(formData: FormData): Promise<
   { error: string } | { success: true; ideaIds: string[] }
 > {
   const supabase = await createClient();
@@ -30,6 +30,12 @@ export async function generateAndSaveIdeas(_formData: FormData): Promise<
   }
   const channelWithBuckets = await getChannelWithBuckets(channel.id);
   const buckets = channelWithBuckets?.buckets ?? [];
+  const bucketId = (formData.get("bucketId") as string)?.trim() || null;
+  const roughIdea = (formData.get("roughIdea") as string)?.trim() || null;
+  const focusBucketName = bucketId
+    ? buckets.find((b: { id: string }) => b.id === bucketId)?.name ?? null
+    : null;
+
   const recentIdeas = await db
     .select({ content: ideas.content })
     .from(ideas)
@@ -55,6 +61,8 @@ export async function generateAndSaveIdeas(_formData: FormData): Promise<
     const generated = await generateIdeasAI({
       channelContext,
       count: 3,
+      focusBucketName: focusBucketName ?? undefined,
+      roughIdea: roughIdea || undefined,
     });
     const ideaIds: string[] = [];
     for (const content of generated) {
@@ -63,6 +71,7 @@ export async function generateAndSaveIdeas(_formData: FormData): Promise<
         .insert(ideas)
         .values({
           channelId: channel.id,
+          bucketId: bucketId || undefined,
           content: content.trim(),
         })
         .returning({ id: ideas.id });
@@ -112,6 +121,34 @@ export async function saveIdea(formData: FormData): Promise<
   revalidatePath("/dashboard/ideas");
   revalidatePath(`/dashboard/ideas/${inserted.id}`);
   return { success: true, ideaId: inserted.id };
+}
+
+export async function deleteIdea(ideaId: string): Promise<
+  { error: string } | { success: true }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+  const channel = await getChannelByUserId(user.id);
+  if (!channel) {
+    return { error: "Channel not found" };
+  }
+  const [idea] = await db
+    .select({ id: ideas.id })
+    .from(ideas)
+    .where(and(eq(ideas.id, ideaId), eq(ideas.channelId, channel.id)))
+    .limit(1);
+  if (!idea) {
+    return { error: "Idea not found" };
+  }
+  await db.delete(ideas).where(eq(ideas.id, ideaId));
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/ideas");
+  return { success: true };
 }
 
 export async function generateOutput(

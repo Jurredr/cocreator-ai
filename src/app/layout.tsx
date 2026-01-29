@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,8 +34,10 @@ export default function RootLayout({
       className={`${inter.variable} ${instrumentSerif.variable}`}
     >
       <body className="min-h-screen antialiased">
-        {children}
-        <Toaster />
+        <QueryProvider>
+          {children}
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,28 +1,80 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { getChannelByUserId, getChannelWithBuckets } from "@/lib/db/queries";
+"use client";
+
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChannelForm } from "@/components/channel-form";
 import { BucketList } from "@/components/bucket-list";
 import { BrainstormBlock } from "@/components/brainstorm-block";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { queryKeys } from "@/lib/query-keys";
+import { fetchApi } from "@/lib/fetch-api";
+import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
 
-export default async function ChannelPage() {
-  const supabase = await createClient();
+type Channel = {
+  id: string;
+  name: string;
+  coreAudience: string | null;
+  goals: string | null;
+};
+
+type Bucket = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+
+type ChannelWithBuckets = {
+  id: string;
+  name: string;
+  coreAudience: string | null;
+  goals: string | null;
+  buckets: Bucket[];
+};
+
+type ChannelData = {
+  channel: Channel | null;
+  channelWithBuckets: ChannelWithBuckets | null;
+};
+
+export default function ChannelPage() {
+  const queryClient = useQueryClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: queryKeys.me.channel(),
+    queryFn: () => fetchApi<ChannelData>("/api/me/channel"),
+  });
+
+  useRedirectOnUnauthorized(isError, error ?? null);
+
+  const channel = data?.channel ?? null;
+  const channelWithBuckets = data?.channelWithBuckets ?? null;
+
+  const invalidateChannel = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.me.channel() });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-8 p-6">
+        <div className="h-10 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-48 animate-pulse rounded-lg bg-muted" />
+      </div>
+    );
   }
-  const channel = await getChannelByUserId(user.id);
-  const channelWithBuckets = channel
-    ? await getChannelWithBuckets(channel.id)
-    : null;
 
   return (
     <div className="flex flex-1 flex-col gap-8 p-6">
       <header>
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
+        <h1 className="font-heading text-3xl font-semibold">
           Channel profile
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -39,7 +91,7 @@ export default async function ChannelPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ChannelForm channel={channel ?? undefined} />
+          <ChannelForm channel={channel ?? undefined} onSuccess={invalidateChannel} />
         </CardContent>
       </Card>
 
@@ -50,7 +102,7 @@ export default async function ChannelPage() {
             coreAudience={channel.coreAudience}
             goals={channel.goals}
             buckets={
-              channelWithBuckets?.buckets.map((b: { name: string; description: string | null }) => ({
+              channelWithBuckets?.buckets.map((b) => ({
                 name: b.name,
                 description: b.description ?? "",
               })) ?? []
@@ -60,14 +112,15 @@ export default async function ChannelPage() {
             <CardHeader>
               <CardTitle className="font-heading">Content buckets</CardTitle>
               <CardDescription>
-                Themes or series for your content. Ideas can be associated with a
-                bucket.
+                Themes or series for your content. Ideas can be associated with
+                a bucket.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <BucketList
                 buckets={channelWithBuckets?.buckets ?? []}
                 channelId={channel.id}
+                onSuccess={invalidateChannel}
               />
             </CardContent>
           </Card>

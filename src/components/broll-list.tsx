@@ -1,10 +1,13 @@
 "use client";
 
-import type { broll } from "@/lib/db/schema";
+export type BrollListItem = {
+  id: string;
+  filename: string;
+  thumbnailDataUrl: string;
+  description: string | null;
+};
 
-type BrollItem = typeof broll.$inferSelect;
-
-export function BrollList({ items }: { items: BrollItem[] }) {
+export function BrollList({ items }: { items: BrollListItem[] }) {
   if (items.length === 0) {
     return (
       <p className="text-muted-foreground py-8 text-center text-sm">

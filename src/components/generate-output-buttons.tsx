@@ -10,9 +10,11 @@ import type { ContentOutputType } from "@/lib/db/schema";
 export function GenerateOutputButtons({
   ideaId,
   type,
+  onSuccess,
 }: {
   ideaId: string;
   type: ContentOutputType;
+  onSuccess?: () => void;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +27,7 @@ export function GenerateOutputButtons({
         return;
       }
       toast.success("Generated");
-      window.location.reload();
+      onSuccess?.();
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
+import { DashboardHeader } from "@/components/dashboard-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export default async function DashboardLayout({
@@ -16,10 +17,29 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const userEmail = user.email ?? null;
+  const userName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    (user.user_metadata?.name as string | undefined) ??
+    null;
+  const userImageUrl =
+    user.user_metadata?.avatar_url ??
+    user.user_metadata?.picture ??
+    null;
+
   return (
     <SidebarProvider>
-      <AppSidebar userId={user.id} />
-      <SidebarInset>{children}</SidebarInset>
+      <AppSidebar
+        userEmail={userEmail}
+        userName={userName}
+        userImageUrl={userImageUrl}
+      />
+      <SidebarInset>
+        <DashboardHeader />
+        <div className="flex flex-1 flex-col overflow-auto bg-muted/30">
+          {children}
+        </div>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

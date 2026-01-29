@@ -12,6 +12,7 @@ Co-Creator AI is a Next.js 15 (App Router) application that helps content creato
 - **Migrations:** Drizzle Kit only (`db:generate`, `db:migrate`, `db:up`)
 - **Styling:** Tailwind CSS, ShadCN-style components, Inter + Instrument Serif, orange primary
 - **AI:** OpenAI (GPT-4o-mini) for ideas, goals/buckets brainstorm, and content outputs (title, description, hashtags, script, hooks)
+- **Data fetching:** TanStack Query (React Query) for all dashboard and list/detail data; query keys in `src/lib/query-keys.ts`, shared fetch helper in `src/lib/fetch-api.ts`; mutations invalidate relevant queries so lists and detail views stay in sync.
 
 ## Data model (high level)
 

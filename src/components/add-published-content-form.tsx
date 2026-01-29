@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-export function AddPublishedContentForm() {
+export function AddPublishedContentForm({
+  onSuccess,
+}: { onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [platform, setPlatform] = useState<string>("");
 
@@ -35,7 +37,7 @@ export function AddPublishedContentForm() {
       const form = document.getElementById("add-published-form") as HTMLFormElement;
       form?.reset();
       setPlatform("");
-      window.location.reload();
+      onSuccess?.();
     } finally {
       setLoading(false);
     }

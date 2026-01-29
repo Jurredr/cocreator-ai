@@ -5,9 +5,17 @@ import { deletePublishedContent } from "@/app/dashboard/performance/actions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ExternalLink, Trash2 } from "lucide-react";
-import type { publishedContent } from "@/lib/db/schema";
-
-type PublishedItem = typeof publishedContent.$inferSelect;
+export type PublishedContentListItem = {
+  id: string;
+  platform: string;
+  url: string;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  publishedAt: string | null;
+  createdAt: string;
+};
 
 const PLATFORM_LABELS: Record<string, string> = {
   tiktok: "TikTok",
@@ -15,7 +23,13 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: "YouTube",
 };
 
-export function PublishedContentList({ items }: { items: PublishedItem[] }) {
+export function PublishedContentList({
+  items,
+  onSuccess,
+}: {
+  items: PublishedContentListItem[];
+  onSuccess?: () => void;
+}) {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
@@ -27,7 +41,7 @@ export function PublishedContentList({ items }: { items: PublishedItem[] }) {
         return;
       }
       toast.success("Removed");
-      window.location.reload();
+      onSuccess?.();
     } finally {
       setDeleting(null);
     }

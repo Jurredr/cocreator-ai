@@ -46,13 +46,30 @@ export function buildContext(params: {
 
 /**
  * Generate content ideas based on channel context.
+ * Optional: focus on a bucket, or refine a rough idea into concrete ideas.
  */
 export async function generateIdeas(params: {
   channelContext: string;
   count?: number;
+  focusBucketName?: string | null;
+  roughIdea?: string | null;
 }): Promise<string[]> {
   const client = getOpenAIClient();
-  const count = params.count ?? 3;
+  const roughTrimmed = (params.roughIdea ?? "").trim();
+  const count = roughTrimmed ? Math.min(3, params.count ?? 3) : params.count ?? 3;
+  const hasRoughIdea = Boolean(roughTrimmed);
+  const focusBucket = params.focusBucketName?.trim() || null;
+
+  let userContent: string;
+  if (hasRoughIdea) {
+    userContent = `Channel context:\n${params.channelContext}\n\nRough idea from the creator:\n"${roughTrimmed}"\n\nTurn this rough idea into ${count} concrete, actionable content idea(s) (1-2 sentences each). Keep the creator's intent but make each idea specific and ready to film. Return JSON: { "ideas": ["...", "..."] }`;
+  } else {
+    const bucketLine = focusBucket
+      ? `\nFocus ideas only on this content bucket: "${focusBucket}".\n`
+      : "";
+    userContent = `Channel context:\n${params.channelContext}${bucketLine}\nGenerate ${count} content ideas. Return JSON: { "ideas": ["...", "..."] }`;
+  }
+
   const res = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
@@ -62,7 +79,7 @@ export async function generateIdeas(params: {
       },
       {
         role: "user",
-        content: `Channel context:\n${params.channelContext}\n\nGenerate ${count} content ideas. Return JSON: { "ideas": ["...", "..."] }`,
+        content: userContent,
       },
     ],
     response_format: { type: "json_object" },

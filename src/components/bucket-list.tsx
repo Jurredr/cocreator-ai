@@ -7,16 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
-import type { buckets } from "@/lib/db/schema";
-
-type Bucket = typeof buckets.$inferSelect;
+export type BucketListItem = {
+  id: string;
+  name: string;
+  description: string | null;
+};
 
 export function BucketList({
   buckets: initialBuckets,
   channelId: _channelId,
+  onSuccess,
 }: {
-  buckets: Bucket[];
+  buckets: BucketListItem[];
   channelId: string;
+  onSuccess?: () => void;
 }) {
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
@@ -29,6 +33,7 @@ export function BucketList({
     }
     toast.success("Bucket added");
     setAdding(false);
+    onSuccess?.();
   }
 
   async function handleDelete(bucketId: string) {
@@ -40,6 +45,7 @@ export function BucketList({
       return;
     }
     toast.success("Bucket removed");
+    onSuccess?.();
   }
 
   return (
