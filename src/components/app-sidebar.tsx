@@ -204,10 +204,11 @@ export function AppSidebar({
                                             <SidebarMenuButton
                                                 asChild
                                                 isActive={isActive}
+                                                className="overflow-visible"
                                             >
                                                 <Link href={item.url}>
                                                     <motion.div
-                                                        className="flex flex-1 items-center gap-2 overflow-hidden group-data-[state=collapsed]:justify-center"
+                                                        className="flex flex-1 items-center gap-2 overflow-visible group-data-[state=collapsed]:justify-center"
                                                         initial="rest"
                                                         whileHover="hover"
                                                         variants={
@@ -245,15 +246,17 @@ export function AppSidebar({
                                                                             .animatedIconKey
                                                                     ];
                                                                 return (
-                                                                    <IconComponent
-                                                                        ref={
-                                                                            iconRef as React.Ref<AnimatedIconRef>
-                                                                        }
-                                                                        size={
-                                                                            16
-                                                                        }
-                                                                        className="size-4 shrink-0"
-                                                                    />
+                                                                    <span className="flex shrink-0 items-center justify-center pl-0.5">
+                                                                        <IconComponent
+                                                                            ref={
+                                                                                iconRef as React.Ref<AnimatedIconRef>
+                                                                            }
+                                                                            size={
+                                                                                16
+                                                                            }
+                                                                            className="size-4"
+                                                                        />
+                                                                    </span>
                                                                 );
                                                             })()
                                                         ) : (

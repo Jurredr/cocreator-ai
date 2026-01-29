@@ -32,6 +32,7 @@ export const ROOT_METADATA = {
   ),
   title: {
     default: SITE_NAME,
+    template: "%s", // We set full titles via pageTitle() per route; template required by type.
   },
   description: DEFAULT_DESCRIPTION,
   keywords: DEFAULT_KEYWORDS,
