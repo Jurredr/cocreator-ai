@@ -18,7 +18,7 @@ import { fetchApi } from "@/lib/fetch-api";
 import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
 import { deleteProject, createEmptyProject } from "@/app/dashboard/ideas/actions";
 import { toast } from "sonner";
-import type { ProjectStatus } from "@/lib/db/schema";
+import type { ProjectStatus, ProjectContentType } from "@/lib/db/schema";
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
   idea: "Idea",
@@ -27,10 +27,17 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
   uploaded: "Uploaded",
 };
 
+const CONTENT_TYPE_LABELS: Record<ProjectContentType, string> = {
+  "short-form": "Short-form",
+  "long-form": "Long-form",
+  textual: "Textual",
+};
+
 type Project = {
   id: string;
   content: string;
   status: ProjectStatus;
+  contentType?: ProjectContentType;
   createdAt: string;
 };
 
@@ -170,9 +177,14 @@ export default function ProjectsPage() {
                     href={`/dashboard/projects/${project.id}`}
                     className="block pr-8"
                   >
-                    <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium capitalize bg-muted/80 mb-2">
-                      {STATUS_LABELS[project.status]}
-                    </span>
+                    <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium capitalize bg-muted/80">
+                        {STATUS_LABELS[project.status]}
+                      </span>
+                      <span className="text-muted-foreground rounded border px-2 py-0.5 text-xs">
+                        {CONTENT_TYPE_LABELS[project.contentType ?? "short-form"]}
+                      </span>
+                    </div>
                     <p className="line-clamp-3 text-sm">
                       {project.content?.trim() || "Untitled project"}
                     </p>

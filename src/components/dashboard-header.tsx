@@ -20,7 +20,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   ideas: "Ideas",
   projects: "Projects",
   channel: "Channel",
-  broll: "B-roll library",
+  broll: "Media library",
   performance: "Performance",
   new: "New project",
 };

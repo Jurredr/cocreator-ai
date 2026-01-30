@@ -53,6 +53,7 @@ export async function GET(
       content: project.content,
       graphData: project.graphData ?? null,
       status: project.status,
+      contentType: project.contentType,
       createdAt: project.createdAt,
     },
     byType,
@@ -86,21 +87,34 @@ export async function PATCH(
   if (!project) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  let body: { graph_data?: unknown; status?: string };
+  let body: {
+    graph_data?: unknown;
+    status?: string;
+    content_type?: string;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const updates: { graphData?: unknown; status?: "idea" | "scripting" | "producing" | "uploaded" } = {};
+  const updates: {
+    graphData?: unknown;
+    status?: "idea" | "scripting" | "producing" | "uploaded";
+    contentType?: "short-form" | "long-form" | "textual";
+  } = {};
   if (body.graph_data !== undefined) updates.graphData = body.graph_data;
   if (body.status !== undefined) {
     if (["idea", "scripting", "producing", "uploaded"].includes(body.status)) {
       updates.status = body.status as "idea" | "scripting" | "producing" | "uploaded";
     }
   }
+  if (body.content_type !== undefined) {
+    if (["short-form", "long-form", "textual"].includes(body.content_type)) {
+      updates.contentType = body.content_type as "short-form" | "long-form" | "textual";
+    }
+  }
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "Provide graph_data and/or status" }, { status: 400 });
+    return NextResponse.json({ error: "Provide graph_data, status, and/or content_type" }, { status: 400 });
   }
   await db
     .update(projects)

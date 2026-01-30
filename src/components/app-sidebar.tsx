@@ -71,7 +71,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
                 animatedIconKey: 'flask',
             },
             {
-                title: 'B-roll library',
+                title: 'Media library',
                 url: '/dashboard/broll',
                 icon: GalleryHorizontalEndIcon,
                 animatedIconKey: 'gallery',

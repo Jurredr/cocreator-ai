@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { pageTitle } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: pageTitle("B-roll library"),
+  title: pageTitle("Media library"),
   description:
-    "Your searchable library of B-roll clips. Upload footage, add descriptions, and reference it when generating scripts so your ideas stay grounded in what you can actually shoot.",
+    "Videos and images for your content: B-roll, thumbnails, post assets, and AI-generated images from projects. Upload videos (vertical 9:16 or horizontal 16:9) and images, or use the AI-generated tab for project assets.",
 };
 
 export default function BrollLayout({

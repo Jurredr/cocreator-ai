@@ -17,6 +17,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MoreHorizontal, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,6 +33,10 @@ export type BrollListItem = {
   thumbnailDataUrl: string;
   description: string | null;
   recordingDate: string | null;
+  mediaType: "video" | "image";
+  orientation: "vertical" | "horizontal" | null;
+  source: "uploaded" | "ai_generated";
+  projectId: string | null;
   createdAt: string;
 };
 
@@ -46,12 +57,22 @@ export function BrollList({
 }: {
   items: BrollListItem[];
   onDelete?: (id: string) => void;
-  onEdit?: (id: string, updates: { filename?: string; description?: string }) => void;
+  onEdit?: (
+    id: string,
+    updates: {
+      filename?: string;
+      description?: string;
+      orientation?: "vertical" | "horizontal" | null;
+    }
+  ) => void;
 }) {
   const [search, setSearch] = useState("");
   const [editItem, setEditItem] = useState<BrollListItem | null>(null);
   const [editFilename, setEditFilename] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editOrientation, setEditOrientation] = useState<
+    "vertical" | "horizontal" | ""
+  >("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -69,6 +90,7 @@ export function BrollList({
     setEditItem(item);
     setEditFilename(item.filename);
     setEditDescription(item.description ?? "");
+    setEditOrientation(item.orientation ?? "");
   }
 
   async function handleSaveEdit() {
@@ -78,8 +100,12 @@ export function BrollList({
       onEdit(editItem.id, {
         filename: editFilename.trim() || editItem.filename,
         description: editDescription.trim() || undefined,
+        orientation:
+          editItem.mediaType === "video"
+            ? editOrientation || null
+            : undefined,
       });
-      toast.success("B-roll updated");
+      toast.success("Media updated");
       setEditItem(null);
     } catch {
       toast.error("Failed to update");
@@ -94,7 +120,7 @@ export function BrollList({
     setDeletingId(item.id);
     try {
       onDelete(item.id);
-      toast.success("B-roll removed");
+      toast.success("Media removed");
     } catch {
       toast.error("Failed to delete");
     } finally {
@@ -105,7 +131,7 @@ export function BrollList({
   if (items.length === 0) {
     return (
       <p className="text-muted-foreground py-8 text-center text-sm">
-        No B-roll yet. Add a video file above to get started.
+        No media yet. Add a video or image above to get started.
       </p>
     );
   }
@@ -168,6 +194,16 @@ export function BrollList({
               </div>
             </div>
             <div className="flex flex-1 flex-col gap-1 p-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-muted-foreground capitalize text-xs">
+                  {item.mediaType}
+                </span>
+                {item.mediaType === "video" && item.orientation && (
+                  <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-xs">
+                    {item.orientation === "vertical" ? "9:16" : "16:9"}
+                  </span>
+                )}
+              </div>
               <p className="truncate text-sm font-medium" title={item.filename}>
                 {item.filename}
               </p>
@@ -177,9 +213,11 @@ export function BrollList({
                 </p>
               )}
               <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0 text-xs">
-                <span title="Recording date">
-                  Recorded: {formatDate(item.recordingDate)}
-                </span>
+                {item.mediaType === "video" && (
+                  <span title="Recording date">
+                    Recorded: {formatDate(item.recordingDate)}
+                  </span>
+                )}
                 <span title="Upload date">
                   Added: {formatDate(item.createdAt)}
                 </span>
@@ -198,7 +236,7 @@ export function BrollList({
       <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit B-roll</DialogTitle>
+            <DialogTitle>Edit media</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -210,6 +248,25 @@ export function BrollList({
                 placeholder="Clip name"
               />
             </div>
+            {editItem?.mediaType === "video" && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-orientation">Orientation</Label>
+                <Select
+                  value={editOrientation}
+                  onValueChange={(v) =>
+                    setEditOrientation(v as "vertical" | "horizontal" | "")
+                  }
+                >
+                  <SelectTrigger id="edit-orientation">
+                    <SelectValue placeholder="Select aspect ratio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vertical">Vertical (9:16)</SelectItem>
+                    <SelectItem value="horizontal">Horizontal (16:9)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="edit-description">Description (optional)</Label>
               <Input

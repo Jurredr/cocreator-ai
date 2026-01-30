@@ -48,8 +48,21 @@ export async function POST(request: Request) {
     thumbnailDataUrl: string;
     description?: string;
     recordingDate?: string | null;
+    mediaType?: "video" | "image";
+    orientation?: "vertical" | "horizontal" | null;
+    source?: "uploaded" | "ai_generated";
+    projectId?: string | null;
   };
-  const { filename, thumbnailDataUrl, description, recordingDate } = body;
+  const {
+    filename,
+    thumbnailDataUrl,
+    description,
+    recordingDate,
+    mediaType = "video",
+    orientation,
+    source = "uploaded",
+    projectId,
+  } = body;
   if (!filename || !thumbnailDataUrl) {
     return NextResponse.json(
       { error: "filename and thumbnailDataUrl required" },
@@ -64,6 +77,10 @@ export async function POST(request: Request) {
       thumbnailDataUrl,
       description: description ?? null,
       recordingDate: recordingDate ? new Date(recordingDate) : null,
+      mediaType,
+      orientation: orientation ?? null,
+      source,
+      projectId: projectId ?? null,
     })
     .returning();
   if (!inserted) {

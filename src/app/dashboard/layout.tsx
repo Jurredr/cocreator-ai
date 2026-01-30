@@ -9,7 +9,7 @@ import { pageTitle } from "@/lib/metadata";
 export const metadata: Metadata = {
   title: pageTitle("Dashboard"),
   description:
-    "Your content command center. See recent ideas and scripts, generate new ideas, and jump into your B-roll library, channel profile, and performance.",
+    "Your content command center. See recent ideas and scripts, generate new ideas, and jump into your Media library, channel profile, and performance.",
   robots: { index: false, follow: false },
 };
 

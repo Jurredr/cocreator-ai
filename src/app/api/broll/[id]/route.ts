@@ -28,6 +28,7 @@ export async function PATCH(
     filename?: string;
     description?: string;
     recordingDate?: string | null;
+    orientation?: "vertical" | "horizontal" | null;
   };
   const [updated] = await db
     .update(broll)
@@ -36,6 +37,9 @@ export async function PATCH(
       ...(body.description !== undefined && { description: body.description }),
       ...(body.recordingDate !== undefined && {
         recordingDate: body.recordingDate ? new Date(body.recordingDate) : null,
+      }),
+      ...(body.orientation !== undefined && {
+        orientation: body.orientation ?? null,
       }),
     })
     .where(and(eq(broll.id, id), eq(broll.channelId, channel.id)))

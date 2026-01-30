@@ -4,10 +4,18 @@ import { use, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notFound } from "next/navigation";
 import { IdeaCanvas } from "@/components/idea-graph/idea-canvas";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { queryKeys } from "@/lib/query-keys";
 import { fetchApi } from "@/lib/fetch-api";
 import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
 import type { IdeaGraphData } from "@/lib/idea-graph-types";
+import type { ProjectContentType } from "@/lib/db/schema";
 import {
   brainstormNoteForNode,
   brainstormSubIdeasForNode,
@@ -22,6 +30,7 @@ type ProjectDetailData = {
     content: string;
     graphData: IdeaGraphData | null;
     status: string;
+    contentType?: ProjectContentType;
     createdAt: string;
   };
 };
@@ -160,15 +169,48 @@ export default function ProjectCanvasPage({
     return null;
   }
 
+  async function handleContentTypeChange(value: ProjectContentType) {
+    try {
+      await fetchApi(`/api/me/projects/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ content_type: value }),
+      });
+      queryClient.setQueryData(queryKeys.me.project(projectId), (old: ProjectDetailData | undefined) =>
+        old ? { ...old, project: { ...old.project, contentType: value } } : old
+      );
+      toast.success("Content type updated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
-      <header>
-        <h1 className="font-heading text-3xl font-semibold">
-          Project canvas
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Build your idea step by step: add or generate ideas, brainstorm sub-ideas, then add hook, script, description, and hashtags. AI assists at each step.
-        </p>
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-heading text-3xl font-semibold">
+            Project canvas
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Build your idea step by step: add or generate ideas, brainstorm sub-ideas, then add hook, script, description, and hashtags. AI assists at each step.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">Content type</span>
+          <Select
+            value={data.project.contentType ?? "short-form"}
+            onValueChange={handleContentTypeChange}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="short-form">Short-form</SelectItem>
+              <SelectItem value="long-form">Long-form</SelectItem>
+              <SelectItem value="textual">Textual (+ images)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </header>
       <div className="flex-1 min-h-[500px] rounded-lg border bg-muted/30">
         <IdeaCanvas

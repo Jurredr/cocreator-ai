@@ -4,36 +4,101 @@ import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { extractThumbnailFromVideo } from "@/lib/broll-thumbnail";
 import { Loader2, Plus } from "lucide-react";
+import type { MediaOrientation } from "@/lib/db/schema";
+
+/** Read image as data URL (resized for storage). */
+async function imageToDataUrl(file: File, maxSize = 1200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas not available"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = url;
+  });
+}
 
 export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [orientation, setOrientation] = useState<MediaOrientation | "">("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isVideo = selectedFile?.type.startsWith("video/") ?? false;
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("video/")) {
-      if (file) toast.error("Please select a video file");
+    if (!file) {
       setSelectedFile(null);
+      setOrientation("");
+      return;
+    }
+    if (!file.type.startsWith("video/") && !file.type.startsWith("image/")) {
+      toast.error("Please select a video or image file");
+      setSelectedFile(null);
+      setOrientation("");
       return;
     }
     setSelectedFile(file);
     setDescription("");
+    setOrientation(file.type.startsWith("video/") ? "" : "");
   }
 
   async function handleAddToLibrary() {
     if (!selectedFile) {
-      toast.error("Please select a video file first");
+      toast.error("Please select a video or image file first");
       return;
     }
     setLoading(true);
     try {
-      const thumbnailDataUrl = await extractThumbnailFromVideo(selectedFile, 1);
-      const recordingDate = new Date(selectedFile.lastModified).toISOString();
+      let thumbnailDataUrl: string;
+      const mediaType = selectedFile.type.startsWith("video/") ? "video" : "image";
+      const recordingDate =
+        mediaType === "video"
+          ? new Date(selectedFile.lastModified).toISOString()
+          : undefined;
+
+      if (mediaType === "video") {
+        thumbnailDataUrl = await extractThumbnailFromVideo(selectedFile, 1);
+      } else {
+        thumbnailDataUrl = await imageToDataUrl(selectedFile);
+      }
+
       const res = await fetch("/api/broll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,6 +107,12 @@ export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
           thumbnailDataUrl,
           description: description.trim() || undefined,
           recordingDate,
+          mediaType,
+          orientation:
+            mediaType === "video" && orientation
+              ? orientation
+              : undefined,
+          source: "uploaded",
         }),
       });
       const data = await res.json();
@@ -49,16 +120,17 @@ export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
         toast.error(data.error ?? "Failed to save");
         return;
       }
-      toast.success("B-roll added to library");
+      toast.success("Added to media library");
       setDescription("");
       setSelectedFile(null);
+      setOrientation("");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
       onSuccess?.();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to extract thumbnail"
+        err instanceof Error ? err.message : "Failed to process file"
       );
     } finally {
       setLoading(false);
@@ -68,6 +140,7 @@ export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
   function clearSelection() {
     setSelectedFile(null);
     setDescription("");
+    setOrientation("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -76,12 +149,12 @@ export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-2">
-        <Label htmlFor="broll-file">Video file</Label>
+        <Label htmlFor="broll-file">Video or image file</Label>
         <input
           ref={fileInputRef}
           id="broll-file"
           type="file"
-          accept="video/*"
+          accept="video/*,image/*"
           onChange={handleFileChange}
           disabled={loading}
           className="file:bg-primary file:text-primary-foreground file:mr-2 file:rounded-md file:border-0 file:px-3 file:py-1 file:text-sm"
@@ -89,6 +162,27 @@ export function BrollUpload({ onSuccess }: { onSuccess?: () => void }) {
       </div>
       {selectedFile && (
         <>
+          {isVideo && (
+            <div className="grid gap-2">
+              <Label htmlFor="orientation">Orientation</Label>
+              <Select
+                value={orientation}
+                onValueChange={(v) => setOrientation(v as MediaOrientation | "")}
+                disabled={loading}
+              >
+                <SelectTrigger id="orientation">
+                  <SelectValue placeholder="Select aspect ratio" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vertical">Vertical (9:16)</SelectItem>
+                  <SelectItem value="horizontal">Horizontal (16:9)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Choose vertical for Reels/TikTok, horizontal for YouTube.
+              </p>
+            </div>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="broll-desc">Description (optional)</Label>
             <Input

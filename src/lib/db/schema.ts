@@ -43,6 +43,17 @@ export type ProjectStatus =
   | "producing"
   | "uploaded";
 
+export const projectContentTypeEnum = pgEnum("project_content_type", [
+  "short-form",
+  "long-form",
+  "textual",
+]);
+
+export type ProjectContentType =
+  | "short-form"
+  | "long-form"
+  | "textual";
+
 /** Stored graph: { nodes: Array<{id, type, position: {x,y}, data}>, edges: Array<{id, source, target}> } */
 export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -57,6 +68,8 @@ export const projects = pgTable("projects", {
   /** React Flow graph: nodes (idea, subIdea, hook, script, description, hashtags) + edges. */
   graphData: jsonb("graph_data"),
   status: projectStatusEnum("status").notNull().default("idea"),
+  /** short-form (e.g. Reels/TikTok), long-form (e.g. YouTube), or textual (+ optional images). */
+  contentType: projectContentTypeEnum("content_type").notNull().default("short-form"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -109,6 +122,22 @@ export const publishedContent = pgTable("published_content", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const mediaTypeEnum = pgEnum("media_type", ["video", "image"]);
+export type MediaType = "video" | "image";
+
+export const mediaOrientationEnum = pgEnum("media_orientation", [
+  "vertical",
+  "horizontal",
+]);
+export type MediaOrientation = "vertical" | "horizontal";
+
+export const mediaSourceEnum = pgEnum("media_source", [
+  "uploaded",
+  "ai_generated",
+]);
+export type MediaSource = "uploaded" | "ai_generated";
+
+/** Media library: videos (B-roll), images (thumbnails, posts, AI-generated). */
 export const broll = pgTable("broll", {
   id: uuid("id").primaryKey().defaultRandom(),
   channelId: uuid("channel_id")
@@ -119,7 +148,17 @@ export const broll = pgTable("broll", {
   description: text("description"),
   /** Recording date from video file metadata (e.g. file lastModified or embedded creation time). */
   recordingDate: timestamp("recording_date"),
-  /** When the clip was added to the b-roll library. */
+  /** video (B-roll) or image (thumbnails, posts, AI-generated). */
+  mediaType: mediaTypeEnum("media_type").notNull().default("video"),
+  /** For video: vertical (9:16) or horizontal (16:9). Null for images. */
+  orientation: mediaOrientationEnum("orientation"),
+  /** uploaded by user or ai_generated (e.g. from a project). */
+  source: mediaSourceEnum("source").notNull().default("uploaded"),
+  /** When source is ai_generated, optional project this media belongs to. */
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "set null",
+  }),
+  /** When the item was added to the media library. */
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -173,6 +212,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   }),
   contentOutputs: many(contentOutputs),
   publishedContent: many(publishedContent, { relationName: "projectPublishedContent" }),
+  media: many(broll, { relationName: "projectMedia" }),
 }));
 
 export const contentOutputsRelations = relations(contentOutputs, ({ one }) => ({
@@ -203,6 +243,11 @@ export const brollRelations = relations(broll, ({ one }) => ({
     fields: [broll.channelId],
     references: [channels.id],
     relationName: "channelBroll",
+  }),
+  project: one(projects, {
+    fields: [broll.projectId],
+    references: [projects.id],
+    relationName: "projectMedia",
   }),
 }));
 
