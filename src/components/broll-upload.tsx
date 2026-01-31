@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { extractThumbnailFromVideo } from "@/lib/broll-thumbnail";
+import { extractThumbnailFromVideo } from "@/lib/media/broll-thumbnail";
 import { Loader2, Plus } from "lucide-react";
 import type { MediaOrientation } from "@/lib/db/schema";
 

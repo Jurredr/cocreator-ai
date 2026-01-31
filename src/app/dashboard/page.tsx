@@ -11,9 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Sparkles, Lightbulb, ArrowRight } from "lucide-react";
-import { queryKeys } from "@/lib/query-keys";
-import { fetchApi } from "@/lib/fetch-api";
-import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
+import { fetchApi } from "@/lib/api/fetch-api";
+import { queryKeys } from "@/lib/query/query-keys";
+import { useRedirectOnUnauthorized } from "@/lib/hooks/use-redirect-unauthorized";
 
 type Channel = {
   id: string;

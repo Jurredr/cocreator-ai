@@ -3,20 +3,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { projects, contentOutputs } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import {
-  buildContext,
   generateIdeas as generateIdeasAI,
   generateContentOutput,
+  generateProjectSummary,
   brainstormSubIdeas as brainstormSubIdeasAI,
   brainstormNote as brainstormNoteAI,
-} from "@/lib/openai";
-import { getChannelByUserId, getChannelWithBuckets } from "@/lib/db/queries";
-import { getHookInspirationSample } from "@/lib/hooks-file";
+} from "@/lib/ai/openai";
+import { buildChannelContext } from "@/lib/context/channel-context";
+import { getChannelByUserId, getChannelContextData, getChannelWithBuckets } from "@/lib/db/queries";
+import { getHookInspirationSample } from "@/lib/data/hooks-file";
 import type { ContentOutputType } from "@/lib/db/schema";
-import type { IdeaGraphData } from "@/lib/idea-graph-types";
-import type { IdeaNodeType } from "@/lib/idea-graph-types";
+import type { IdeaGraphData, IdeaNodeType } from "@/lib/types/idea-graph-types";
 
 export async function generateAndSaveIdeas(formData: FormData): Promise<
   { error: string } | { success: true; ideaIds: string[] }
@@ -40,27 +40,11 @@ export async function generateAndSaveIdeas(formData: FormData): Promise<
     ? buckets.find((b: { id: string }) => b.id === bucketId)?.name ?? null
     : null;
 
-  const recentIdeas = await db
-    .select({ content: projects.content })
-    .from(projects)
-    .where(eq(projects.channelId, channel.id))
-    .orderBy(desc(projects.createdAt))
-    .limit(5);
-  const recentScripts = await db
-    .select({ content: contentOutputs.content })
-    .from(contentOutputs)
-    .innerJoin(projects, eq(projects.id, contentOutputs.projectId))
-    .where(eq(projects.channelId, channel.id))
-    .orderBy(desc(contentOutputs.createdAt))
-    .limit(3);
-  const channelContext = buildContext({
-    channelName: channel.name,
-    coreAudience: channel.coreAudience,
-    goals: channel.goals,
-    buckets: buckets.map((b: { name: string; description: string | null }) => ({ name: b.name, description: b.description })),
-    recentIdeas: recentIdeas.map((r) => r.content),
-    recentScripts: recentScripts.map((r) => r.content),
-  });
+  const contextData = await getChannelContextData(channel.id);
+  if (!contextData) {
+    return { error: "Channel context not found" };
+  }
+  const channelContext = buildChannelContext(contextData);
   try {
     const generated = await generateIdeasAI({
       channelContext,
@@ -179,36 +163,17 @@ export async function generateIdeasForCanvas(params: {
   if (!channel) {
     return { error: "Create a channel first" };
   }
-  const channelWithBuckets = await getChannelWithBuckets(channel.id);
-  const buckets = channelWithBuckets?.buckets ?? [];
+  const contextData = await getChannelContextData(channel.id);
+  if (!contextData) {
+    return { error: "Channel context not found" };
+  }
+  const channelContext = buildChannelContext(contextData);
   const bucketId = params.bucketId?.trim() || null;
+  const channelWithBuckets = await getChannelWithBuckets(channel.id);
+  const bucketsList = channelWithBuckets?.buckets ?? [];
   const focusBucketName = bucketId
-    ? buckets.find((b: { id: string }) => b.id === bucketId)?.name ?? null
+    ? bucketsList.find((b: { id: string }) => b.id === bucketId)?.name ?? null
     : null;
-  const recentIdeas = await db
-    .select({ content: projects.content })
-    .from(projects)
-    .where(eq(projects.channelId, channel.id))
-    .orderBy(desc(projects.createdAt))
-    .limit(5);
-  const recentScripts = await db
-    .select({ content: contentOutputs.content })
-    .from(contentOutputs)
-    .innerJoin(projects, eq(projects.id, contentOutputs.projectId))
-    .where(eq(projects.channelId, channel.id))
-    .orderBy(desc(contentOutputs.createdAt))
-    .limit(3);
-  const channelContext = buildContext({
-    channelName: channel.name,
-    coreAudience: channel.coreAudience,
-    goals: channel.goals,
-    buckets: buckets.map((b: { name: string; description: string | null }) => ({
-      name: b.name,
-      description: b.description,
-    })),
-    recentIdeas: recentIdeas.map((r) => r.content),
-    recentScripts: recentScripts.map((r) => r.content),
-  });
   try {
     const generated = await generateIdeasAI({
       channelContext,
@@ -257,6 +222,20 @@ export async function deleteIdea(projectId: string) {
   return deleteProject(projectId);
 }
 
+/** Get script content from a project's graph when a script node is marked ready. */
+function getReadyScriptContent(graphData: IdeaGraphData | null): string | null {
+  if (!graphData?.nodes?.length) return null;
+  const scriptNode = graphData.nodes.find(
+    (n) => n.type === "script" && (n.data as { ready?: boolean })?.ready === true
+  );
+  if (!scriptNode?.data) return null;
+  const d = scriptNode.data as { content?: string; scriptHook?: string; scriptBody?: string; scriptEnd?: string };
+  const fromSections =
+    [d.scriptHook, d.scriptBody, d.scriptEnd].filter(Boolean).join("\n\n").trim();
+  const full = fromSections || (d.content ?? "").trim();
+  return full || null;
+}
+
 export async function generateOutput(
   projectId: string,
   type: ContentOutputType
@@ -280,20 +259,28 @@ export async function generateOutput(
   if (!project) {
     return { error: "Project not found" };
   }
-  const channelWithBuckets = await getChannelWithBuckets(channel.id);
-  const buckets = channelWithBuckets?.buckets ?? [];
-  const channelContext = buildContext({
-    channelName: channel.name,
-    coreAudience: channel.coreAudience,
-    goals: channel.goals,
-    buckets: buckets.map((b: { name: string; description: string | null }) => ({ name: b.name, description: b.description })),
-  });
+
+  const needsReadyScript = type === "title" || type === "description" || type === "hashtags";
+  const ideaContent = needsReadyScript
+    ? getReadyScriptContent(project.graphData as IdeaGraphData | null)
+    : project.content;
+  if (needsReadyScript && !ideaContent) {
+    return {
+      error: "Mark a script block as ready before generating title, description, or hashtags.",
+    };
+  }
+
+  const contextData = await getChannelContextData(channel.id);
+  if (!contextData) {
+    return { error: "Channel context not found" };
+  }
+  const channelContext = buildChannelContext(contextData);
   const hookSample =
     type === "hooks" ? await getHookInspirationSample() : undefined;
   try {
     const generatedContent = await generateContentOutput({
       channelContext,
-      ideaContent: project.content,
+      ideaContent: ideaContent || project.content,
       type,
       hookInspirationSample: hookSample,
     });
@@ -302,6 +289,12 @@ export async function generateOutput(
       type,
       content: generatedContent,
     });
+    if (type === "script") {
+      const summary = await generateProjectSummary(generatedContent);
+      if (summary && !project.summary) {
+        await db.update(projects).set({ summary }).where(eq(projects.id, projectId));
+      }
+    }
     revalidatePath(`/dashboard/projects/${projectId}`);
     return { success: true, content: generatedContent };
   } catch (e) {
@@ -311,7 +304,7 @@ export async function generateOutput(
   }
 }
 
-/** Save the project graph (canvas nodes/edges). */
+/** Save the project graph (canvas nodes/edges). Regenerates project summary when a script node is marked ready. */
 export async function saveProjectGraph(
   projectId: string,
   graphData: IdeaGraphData
@@ -328,7 +321,7 @@ export async function saveProjectGraph(
     return { error: "Channel not found" };
   }
   const [project] = await db
-    .select({ id: projects.id })
+    .select({ id: projects.id, summary: projects.summary })
     .from(projects)
     .where(and(eq(projects.id, projectId), eq(projects.channelId, channel.id)))
     .limit(1);
@@ -339,6 +332,19 @@ export async function saveProjectGraph(
     .update(projects)
     .set({ graphData })
     .where(eq(projects.id, projectId));
+
+  const readyScriptContent = getReadyScriptContent(graphData);
+  if (readyScriptContent) {
+    try {
+      const summary = await generateProjectSummary(readyScriptContent);
+      if (summary) {
+        await db.update(projects).set({ summary }).where(eq(projects.id, projectId));
+      }
+    } catch {
+      // Non-fatal: graph is saved, summary update can be retried later
+    }
+  }
+
   revalidatePath(`/dashboard/projects/${projectId}`);
   return { success: true };
 }
@@ -368,17 +374,11 @@ export async function brainstormNoteForNode(params: {
   if (!project) {
     return { error: "Project not found" };
   }
-  const channelWithBuckets = await getChannelWithBuckets(channel.id);
-  const buckets = channelWithBuckets?.buckets ?? [];
-  const channelContext = buildContext({
-    channelName: channel.name,
-    coreAudience: channel.coreAudience,
-    goals: channel.goals,
-    buckets: buckets.map((b: { name: string; description: string | null }) => ({
-      name: b.name,
-      description: b.description,
-    })),
-  });
+  const contextData = await getChannelContextData(channel.id);
+  if (!contextData) {
+    return { error: "Channel context not found" };
+  }
+  const channelContext = buildChannelContext(contextData);
   try {
     const content = await brainstormNoteAI({
       channelContext,
@@ -417,17 +417,11 @@ export async function brainstormSubIdeasForNode(params: {
   if (!project) {
     return { error: "Project not found" };
   }
-  const channelWithBuckets = await getChannelWithBuckets(channel.id);
-  const buckets = channelWithBuckets?.buckets ?? [];
-  const channelContext = buildContext({
-    channelName: channel.name,
-    coreAudience: channel.coreAudience,
-    goals: channel.goals,
-    buckets: buckets.map((b: { name: string; description: string | null }) => ({
-      name: b.name,
-      description: b.description,
-    })),
-  });
+  const contextData = await getChannelContextData(channel.id);
+  if (!contextData) {
+    return { error: "Channel context not found" };
+  }
+  const channelContext = buildChannelContext(contextData);
   try {
     const list = await brainstormSubIdeasAI({
       channelContext,
@@ -447,6 +441,10 @@ export async function generateNodeContentForNode(params: {
   projectId: string;
   type: IdeaNodeType;
   contextContent: string;
+  /** When generating script from a hook: use this as the opening hook. */
+  openingHook?: string;
+  /** Additional context from "idea for this" blocks. */
+  additionalContext?: string;
 }): Promise<{ error: string } | { success: true; content: string }> {
   const supabase = await createClient();
   const {
@@ -460,7 +458,7 @@ export async function generateNodeContentForNode(params: {
     return { error: "Channel not found" };
   }
   const [project] = await db
-    .select({ id: projects.id })
+    .select({ id: projects.id, graphData: projects.graphData })
     .from(projects)
     .where(and(eq(projects.id, params.projectId), eq(projects.channelId, channel.id)))
     .limit(1);
@@ -477,25 +475,32 @@ export async function generateNodeContentForNode(params: {
   if (!outputType) {
     return { error: "Unsupported node type for generation" };
   }
-  const channelWithBuckets = await getChannelWithBuckets(channel.id);
-  const buckets = channelWithBuckets?.buckets ?? [];
-  const channelContext = buildContext({
-    channelName: channel.name,
-    coreAudience: channel.coreAudience,
-    goals: channel.goals,
-    buckets: buckets.map((b: { name: string; description: string | null }) => ({
-      name: b.name,
-      description: b.description,
-    })),
-  });
+
+  const needsReadyScript = outputType === "description" || outputType === "hashtags";
+  const ideaContent = needsReadyScript
+    ? getReadyScriptContent(project.graphData as IdeaGraphData | null)
+    : params.contextContent;
+  if (needsReadyScript && !ideaContent) {
+    return {
+      error: "Mark a script block as ready before generating description or hashtags.",
+    };
+  }
+
+  const contextData = await getChannelContextData(channel.id);
+  if (!contextData) {
+    return { error: "Channel context not found" };
+  }
+  const channelContext = buildChannelContext(contextData);
   const hookSample =
     outputType === "hooks" ? await getHookInspirationSample() : undefined;
   try {
     const content = await generateContentOutput({
       channelContext,
-      ideaContent: params.contextContent,
+      ideaContent: ideaContent || params.contextContent,
       type: outputType,
       hookInspirationSample: hookSample,
+      openingHook: params.openingHook,
+      additionalContext: params.additionalContext,
     });
     return { success: true, content };
   } catch (e) {

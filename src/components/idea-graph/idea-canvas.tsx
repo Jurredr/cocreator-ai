@@ -20,7 +20,8 @@ import {
 import "@xyflow/react/dist/style.css";
 import { IdeaGraphNode } from "./idea-graph-node";
 import { CanvasToolbar } from "./canvas-toolbar";
-import type { IdeaGraphData, IdeaNodeType, IdeaNodeData } from "@/lib/idea-graph-types";
+import type { IdeaGraphData, IdeaNodeType, IdeaNodeData } from "@/lib/types/idea-graph-types";
+import { GENERATABLE_TYPES } from "@/lib/types/idea-graph-types";
 import { cn } from "@/lib/utils";
 
 const NODE_TYPES = {
@@ -30,17 +31,39 @@ const NODE_TYPES = {
   script: IdeaGraphNode,
   description: IdeaGraphNode,
   hashtags: IdeaGraphNode,
+  ideaBlock: IdeaGraphNode,
 };
+
+const ROOT_NODE_ID = "root-idea";
 
 function graphToFlow(graph: IdeaGraphData | null): { nodes: Node[]; edges: Edge[] } {
   if (!graph?.nodes?.length) {
-    return { nodes: [], edges: [] };
+    return {
+      nodes: [
+        {
+          id: ROOT_NODE_ID,
+          type: "idea",
+          position: { x: 80, y: 80 },
+          data: { content: "", label: undefined, ready: undefined },
+        } as Node<IdeaNodeData, IdeaNodeType>,
+      ],
+      edges: [],
+    };
   }
   const nodes: Node[] = graph.nodes.map((n) => ({
     id: n.id,
     type: n.type,
     position: n.position,
-    data: { content: n.data?.content ?? "", label: n.data?.label },
+    data: {
+      content: n.data?.content ?? "",
+      label: n.data?.label,
+      ready: n.data?.ready,
+      inputDisabled: n.data?.inputDisabled,
+      scriptHook: n.data?.scriptHook,
+      scriptBody: n.data?.scriptBody,
+      scriptEnd: n.data?.scriptEnd,
+      hookLocked: n.data?.hookLocked,
+    },
   }));
   const edges: Edge[] = (graph.edges ?? []).map((e) => ({
     id: e.id,
@@ -52,15 +75,29 @@ function graphToFlow(graph: IdeaGraphData | null): { nodes: Node[]; edges: Edge[
 
 function flowToGraph(nodes: Node[], edges: Edge[]): IdeaGraphData {
   return {
-    nodes: nodes.map((n) => ({
-      id: n.id,
-      type: (n.type ?? "idea") as IdeaNodeType,
-      position: n.position,
-      data: {
-        content: (n.data as IdeaNodeData)?.content ?? "",
-        label: (n.data as IdeaNodeData)?.label,
-      },
-    })),
+    nodes: nodes.map((n) => {
+      const d = n.data as IdeaNodeData;
+      const type = (n.type ?? "idea") as IdeaNodeType;
+      const hasSections =
+        (d?.scriptHook ?? "") !== "" ||
+        (d?.scriptBody ?? "") !== "" ||
+        (d?.scriptEnd ?? "") !== "";
+      return {
+        id: n.id,
+        type,
+        position: n.position,
+        data: {
+          content: d?.content ?? "",
+          label: d?.label,
+          ready: d?.ready,
+          inputDisabled: d?.inputDisabled,
+          scriptHook: d?.scriptHook,
+          scriptBody: d?.scriptBody ?? (type === "script" && !hasSections && d?.content ? d.content : undefined),
+          scriptEnd: d?.scriptEnd,
+          hookLocked: d?.hookLocked,
+        },
+      };
+    }),
     edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target })),
   };
 }
@@ -75,7 +112,12 @@ type IdeaCanvasInnerProps = {
   onSaveGraph: (ideaId: string, graph: IdeaGraphData) => Promise<void>;
   onBrainstormNote: (params: { nodeId: string; currentContent: string }) => Promise<string>;
   onBrainstormSubIdeas?: (params: { parentContent: string }) => Promise<string[]>;
-  onGenerateNodeContent?: (params: { type: IdeaNodeType; contextContent: string }) => Promise<string>;
+  onGenerateNodeContent?: (params: {
+    type: IdeaNodeType;
+    contextContent: string;
+    openingHook?: string;
+    additionalContext?: string;
+  }) => Promise<string>;
   onGenerateThreeIdeas?: () => Promise<string[]>;
   className?: string;
 };
@@ -97,6 +139,7 @@ function IdeaCanvasInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appliedInitialIdRef = useRef<string | null>(null);
   const { getNodes, getEdges } = useReactFlow();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedNodeType, setSelectedNodeType] = useState<IdeaNodeType | null>(null);
@@ -104,6 +147,15 @@ function IdeaCanvasInner({
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isBrainstormingSubIdeas, setIsBrainstormingSubIdeas] = useState(false);
+
+  // Only sync initial graph → state on mount or when switching project. Avoid overwriting
+  // local edits when parent re-renders after our own save (query cache update).
+  useEffect(() => {
+    if (appliedInitialIdRef.current === ideaId) return;
+    appliedInitialIdRef.current = ideaId;
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [ideaId, initialNodes, initialEdges, setNodes, setEdges]);
 
   useOnSelectionChange({
     onChange: ({ nodes: selectedNodes, edges: selectedEdges }) => {
@@ -129,13 +181,110 @@ function IdeaCanvasInner({
   }, [ideaId, onSaveGraph, getNodes, getEdges]);
 
   useEffect(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-  useEffect(() => {
     const handleBrainstorm = async (e: Event) => {
       const { nodeId, currentContent } = (e as CustomEvent<{ nodeId: string; currentContent: string }>).detail;
+      const nodes = getNodes();
+      const edges = getEdges();
+      const node = nodes.find((n) => n.id === nodeId);
+      const nodeType = (node?.type ?? "idea") as IdeaNodeType;
+      const isEmpty = !(currentContent ?? "").trim();
+      const isGeneratable =
+        GENERATABLE_TYPES.includes(nodeType) && onGenerateNodeContent;
+
+      if (isGeneratable && isEmpty) {
+        const incoming = edges.filter((e) => e.target === nodeId);
+        const parentId = incoming.find(
+          (e) => nodes.find((n) => n.id === e.source)?.type !== "ideaBlock"
+        )?.source ?? incoming[0]?.source;
+        const parentNode = parentId ? nodes.find((n) => n.id === parentId) : null;
+        const parentContent = (parentNode?.data as IdeaNodeData)?.content ?? "";
+        const ideaBlockSources = incoming
+          .map((e) => nodes.find((n) => n.id === e.source))
+          .filter((n) => n?.type === "ideaBlock");
+        const additionalContext = ideaBlockSources
+          .map((n) => (n?.data as IdeaNodeData)?.content?.trim())
+          .filter(Boolean)
+          .join("\n\n");
+        const openingHook =
+          nodeType === "script" && parentNode?.type === "hook" ? parentContent : undefined;
+        try {
+          const content = await onGenerateNodeContent({
+            type: nodeType,
+            contextContent: parentContent || "General content idea.",
+            openingHook,
+            additionalContext: additionalContext || undefined,
+          });
+          if (nodeType === "hook" && content.includes("---")) {
+            const hooksList = content.split(/\n---\n/).map((s) => s.trim()).filter(Boolean);
+            if (hooksList.length > 0 && parentId) {
+              const baseX = node?.position?.x ?? 400;
+              const baseY = node?.position?.y ?? 80;
+              const NODE_GAP = 24;
+              const newNodes: Node<IdeaNodeData, IdeaNodeType>[] = hooksList.map((c, i) => ({
+                id: generateNodeId(),
+                type: "hook",
+                position: { x: baseX, y: baseY + i * (100 + NODE_GAP) },
+                data: { content: c, inputDisabled: true },
+              }));
+              const newEdges = newNodes.map((n) => ({
+                id: `e-${parentId}-${n.id}`,
+                source: parentId,
+                target: n.id,
+              }));
+              setNodes((nds) => [
+                ...nds.filter((n) => n.id !== nodeId).map((n) =>
+                  n.id === parentId ? { ...n, data: { ...n.data, inputDisabled: true } as IdeaNodeData } : n
+                ),
+                ...newNodes,
+              ]);
+              setEdges((eds) => [...eds.filter((e) => e.target !== nodeId), ...newEdges]);
+            } else {
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === nodeId ? { ...n, data: { ...n.data, content, inputDisabled: false } as IdeaNodeData } : n
+                )
+              );
+            }
+          } else {
+            setNodes((nds) =>
+              nds.map((n) => {
+                if (n.id !== nodeId) {
+                  if (n.id === parentId) return { ...n, data: { ...n.data, inputDisabled: true } as IdeaNodeData };
+                  return n;
+                }
+                const d = { ...n.data, content, inputDisabled: false } as IdeaNodeData;
+                if (nodeType === "script") {
+                  let scriptHook = openingHook ?? "";
+                  let scriptBody = "";
+                  let scriptEnd = "";
+                  try {
+                    const parsed = JSON.parse(content) as { hook?: string; body?: string; end?: string };
+                    if (parsed && typeof parsed.hook === "string" && typeof parsed.body === "string" && typeof parsed.end === "string") {
+                      scriptHook = parsed.hook.trim();
+                      scriptBody = parsed.body.trim();
+                      scriptEnd = parsed.end.trim();
+                    } else {
+                      scriptBody = openingHook ? content.replace(openingHook.trim(), "").trim() : content;
+                    }
+                  } catch {
+                    scriptBody = openingHook ? content.replace(openingHook.trim(), "").trim() : content;
+                  }
+                  d.scriptHook = scriptHook;
+                  d.scriptBody = scriptBody;
+                  d.scriptEnd = scriptEnd;
+                  if (openingHook) d.hookLocked = true;
+                }
+                return { ...n, data: d };
+              })
+            );
+          }
+          persistGraph();
+        } catch {
+          // toast handled by caller
+        }
+        return;
+      }
+
       try {
         const result = await onBrainstormNote({ nodeId, currentContent });
         setNodes((nds) =>
@@ -152,24 +301,35 @@ function IdeaCanvasInner({
     };
     window.addEventListener("idea-graph-brainstorm", handleBrainstorm);
     return () => window.removeEventListener("idea-graph-brainstorm", handleBrainstorm);
-  }, [onBrainstormNote, setNodes, persistGraph]);
+  }, [onBrainstormNote, onGenerateNodeContent, setNodes, setEdges, getNodes, getEdges, persistGraph]);
+
+  const DEBOUNCE_MS = 400;
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = null;
+      persistGraph();
+    }, DEBOUNCE_MS);
+  }, [persistGraph]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       onNodesChange(changes);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(persistGraph, 800);
+      scheduleSave();
     },
-    [onNodesChange, persistGraph]
+    [onNodesChange, scheduleSave]
   );
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      onEdgesChange(changes);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(persistGraph, 800);
+      const filtered = changes.filter((c) => c.type !== "remove");
+      if (filtered.length > 0) {
+        onEdgesChange(filtered);
+        scheduleSave();
+      }
     },
-    [onEdgesChange, persistGraph]
+    [onEdgesChange, scheduleSave]
   );
 
   const onContentChange = useCallback(
@@ -179,19 +339,47 @@ function IdeaCanvasInner({
           n.id === nodeId ? { ...n, data: { ...n.data, content } as IdeaNodeData } : n
         )
       );
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(persistGraph, 800);
+      scheduleSave();
     },
-    [setNodes, persistGraph]
+    [setNodes, scheduleSave]
+  );
+
+  const onReadyChange = useCallback(
+    (nodeId: string, ready: boolean) => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, ready } as IdeaNodeData } : n
+        )
+      );
+      scheduleSave();
+    },
+    [setNodes, scheduleSave]
+  );
+
+  const onScriptChange = useCallback(
+    (nodeId: string, section: "hook" | "body" | "end", value: string) => {
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id !== nodeId) return n;
+          const d = { ...n.data } as IdeaNodeData;
+          if (section === "hook") d.scriptHook = value;
+          if (section === "body") d.scriptBody = value;
+          if (section === "end") d.scriptEnd = value;
+          d.content = [d.scriptHook ?? "", d.scriptBody ?? "", d.scriptEnd ?? ""].filter(Boolean).join("\n\n");
+          return { ...n, data: d };
+        })
+      );
+      scheduleSave();
+    },
+    [setNodes, scheduleSave]
   );
 
   const onConnect = useCallback(
     (connection: Connection) => {
       setEdges((eds) => addEdge(connection, eds));
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(persistGraph, 800);
+      scheduleSave();
     },
-    [setEdges, persistGraph]
+    [setEdges, scheduleSave]
   );
 
   const getNextPosition = useCallback(() => {
@@ -214,9 +402,8 @@ function IdeaCanvasInner({
         data: { content: "" },
       } as Node<IdeaNodeData, IdeaNodeType>,
     ]);
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(persistGraph, 800);
-  }, [setNodes, getNextPosition, persistGraph]);
+    scheduleSave();
+  }, [setNodes, getNextPosition, scheduleSave]);
 
   const handleGenerateThreeIdeas = useCallback(async () => {
     if (!onGenerateThreeIdeas) return;
@@ -261,84 +448,104 @@ function IdeaCanvasInner({
       }));
       setNodes((nds) => [...nds, ...newNodes]);
       setEdges((eds) => [...eds, ...newEdges]);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(persistGraph, 800);
+      scheduleSave();
     } finally {
       setIsBrainstormingSubIdeas(false);
     }
-  }, [selectedNodeId, selectedNodeContent, onBrainstormSubIdeas, getNodes, setNodes, setEdges, persistGraph]);
+  }, [selectedNodeId, selectedNodeContent, onBrainstormSubIdeas, getNodes, setNodes, setEdges, scheduleSave]);
 
+  const NEXT_STEP_GAP = 60;
   const handleAddNextStep = useCallback(
-    async (type: IdeaNodeType) => {
+    (type: IdeaNodeType) => {
       if (!selectedNodeId) return;
+      const sourceId = selectedNodeId;
+      const sourceNode = getNodes().find((n) => n.id === sourceId);
       const id = generateNodeId();
-      const pos = getNextPosition();
-      const contextContent = selectedNodeContent.trim() || "General content idea.";
-      let content = "";
-      if (onGenerateNodeContent) {
-        try {
-          content = await onGenerateNodeContent({ type, contextContent });
-        } catch {
-          // keep empty
-        }
-      }
+      const sourceWidth = sourceNode?.measured?.width ?? 240;
+      const pos =
+        sourceNode != null
+          ? {
+              x: sourceNode.position.x + sourceWidth + NEXT_STEP_GAP,
+              y: sourceNode.position.y,
+            }
+          : getNextPosition();
+      const isScriptFromHook = type === "script" && sourceNode?.type === "hook";
+      const sourceHookContent = (sourceNode?.data as IdeaNodeData)?.content?.trim() ?? "";
       setNodes((nds) => [
         ...nds,
         {
           id,
           type,
           position: pos,
-          data: { content },
+          data: {
+            content: "",
+            ready: type === "script" ? false : undefined,
+            ...(isScriptFromHook && sourceHookContent
+              ? { scriptHook: sourceHookContent, hookLocked: true }
+              : {}),
+          },
         } as Node<IdeaNodeData, IdeaNodeType>,
       ]);
-      setEdges((eds) => [...eds, { id: `e-${selectedNodeId}-${id}`, source: selectedNodeId, target: id }]);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(persistGraph, 800);
+      setEdges((eds) => [...eds, { id: `e-${sourceId}-${id}`, source: sourceId, target: id }]);
+      scheduleSave();
     },
-    [selectedNodeId, selectedNodeContent, onGenerateNodeContent, getNextPosition, setNodes, setEdges, persistGraph]
+    [selectedNodeId, getNodes, getNextPosition, setNodes, setEdges, scheduleSave]
   );
+
+  const handleAddIdeaBlock = useCallback(() => {
+    if (!selectedNodeId) return;
+    const targetId = selectedNodeId;
+    const id = generateNodeId();
+    const pos = getNextPosition();
+    setNodes((nds) => [
+      ...nds,
+      {
+        id,
+        type: "ideaBlock",
+        position: pos,
+        data: { content: "" },
+      } as Node<IdeaNodeData, IdeaNodeType>,
+    ]);
+    setEdges((eds) => [...eds, { id: `e-${id}-${targetId}`, source: id, target: targetId }]);
+    scheduleSave();
+  }, [selectedNodeId, getNextPosition, setNodes, setEdges, scheduleSave]);
 
   const handleDeleteSelected = useCallback(() => {
     const nodeIdsToRemove = new Set(
       getNodes().filter((n) => n.selected).map((n) => n.id)
     );
-    const edgeIdsToRemove = new Set(
-      getEdges().filter((e) => e.selected).map((e) => e.id)
-    );
-    if (nodeIdsToRemove.size === 0 && edgeIdsToRemove.size === 0) return;
-    setNodes((nds) =>
-      nds.filter((n) => !nodeIdsToRemove.has(n.id))
-    );
+    if (nodeIdsToRemove.size === 0) return;
+    setNodes((nds) => nds.filter((n) => !nodeIdsToRemove.has(n.id)));
     setEdges((eds) =>
       eds.filter(
-        (e) =>
-          !edgeIdsToRemove.has(e.id) &&
-          !nodeIdsToRemove.has(e.source) &&
-          !nodeIdsToRemove.has(e.target)
+        (e) => !nodeIdsToRemove.has(e.source) && !nodeIdsToRemove.has(e.target)
       )
     );
     setSelectedNodeId(null);
     setSelectedNodeType(null);
     setSelectedNodeContent("");
     setSelectedEdgeIds([]);
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(persistGraph, 800);
-  }, [getNodes, getEdges, setNodes, setEdges, persistGraph]);
+    scheduleSave();
+  }, [getNodes, setNodes, setEdges, scheduleSave]);
 
   const hasSelection = selectedNodeId !== null || selectedEdgeIds.length > 0;
+  const hasReadyScript = useMemo(
+    () => nodes.some((n) => n.type === "script" && (n.data as IdeaNodeData)?.ready === true),
+    [nodes]
+  );
 
   const nodesWithCallbacks = useMemo(
     () =>
       nodes.map((n) => ({
         ...n,
-        data: { ...n.data, onContentChange } as IdeaNodeData,
+        data: { ...n.data, onContentChange, onScriptChange, onReadyChange } as IdeaNodeData,
       })),
-    [nodes, onContentChange]
+    [nodes, onContentChange, onScriptChange, onReadyChange]
   );
 
   return (
     <div className={cn("h-full w-full", className)}>
-      <ReactFlow
+        <ReactFlow
         nodes={nodesWithCallbacks}
         edges={edges}
         onNodesChange={handleNodesChange}
@@ -359,10 +566,12 @@ function IdeaCanvasInner({
           selectedNodeType={selectedNodeType}
           selectedNodeContent={selectedNodeContent}
           hasSelection={hasSelection}
+          hasReadyScript={hasReadyScript}
           onAddIdea={handleAddIdea}
           onGenerateThreeIdeas={handleGenerateThreeIdeas}
           onAddSubIdeas={handleAddSubIdeas}
           onAddNextStep={handleAddNextStep}
+          onAddIdeaBlock={handleAddIdeaBlock}
           onDeleteSelected={handleDeleteSelected}
           isGenerating={isGenerating}
           isBrainstormingSubIdeas={isBrainstormingSubIdeas}

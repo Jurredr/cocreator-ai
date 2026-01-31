@@ -13,9 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Plus, MoreVertical, Trash2, LayoutGrid } from "lucide-react";
-import { queryKeys } from "@/lib/query-keys";
-import { fetchApi } from "@/lib/fetch-api";
-import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
+import { fetchApi } from "@/lib/api/fetch-api";
+import { queryKeys } from "@/lib/query/query-keys";
+import { useRedirectOnUnauthorized } from "@/lib/hooks/use-redirect-unauthorized";
 import { deleteProject, createEmptyProject } from "@/app/dashboard/ideas/actions";
 import { toast } from "sonner";
 import type { ProjectStatus, ProjectContentType } from "@/lib/db/schema";

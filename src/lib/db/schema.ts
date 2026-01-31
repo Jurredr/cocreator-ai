@@ -16,6 +16,8 @@ export const channels = pgTable("channels", {
   name: text("name").notNull(),
   coreAudience: text("core_audience"),
   goals: text("goals"),
+  /** Optional: e.g. "Day 35" for series/challenge; used in context when building prompts. */
+  nextSequenceLabel: text("next_sequence_label"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -70,6 +72,12 @@ export const projects = pgTable("projects", {
   status: projectStatusEnum("status").notNull().default("idea"),
   /** short-form (e.g. Reels/TikTok), long-form (e.g. YouTube), or textual (+ optional images). */
   contentType: projectContentTypeEnum("content_type").notNull().default("short-form"),
+  /** One-line AI summary (what was said/promised); generated when script exists or when script marked ready. */
+  summary: text("summary"),
+  /** Optional: e.g. "Day 15", "Episode 3"; for series/challenge continuity. */
+  sequenceLabel: text("sequence_label"),
+  /** Optional: one-line story beat (e.g. "Promised revenue update in 20 days"). */
+  storyBeat: text("story_beat"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -54,6 +54,9 @@ export async function GET(
       graphData: project.graphData ?? null,
       status: project.status,
       contentType: project.contentType,
+      summary: project.summary ?? null,
+      sequenceLabel: project.sequenceLabel ?? null,
+      storyBeat: project.storyBeat ?? null,
       createdAt: project.createdAt,
     },
     byType,
@@ -91,6 +94,9 @@ export async function PATCH(
     graph_data?: unknown;
     status?: string;
     content_type?: string;
+    summary?: string | null;
+    sequence_label?: string | null;
+    story_beat?: string | null;
   };
   try {
     body = await request.json();
@@ -101,6 +107,9 @@ export async function PATCH(
     graphData?: unknown;
     status?: "idea" | "scripting" | "producing" | "uploaded";
     contentType?: "short-form" | "long-form" | "textual";
+    summary?: string | null;
+    sequenceLabel?: string | null;
+    storyBeat?: string | null;
   } = {};
   if (body.graph_data !== undefined) updates.graphData = body.graph_data;
   if (body.status !== undefined) {
@@ -113,8 +122,11 @@ export async function PATCH(
       updates.contentType = body.content_type as "short-form" | "long-form" | "textual";
     }
   }
+  if (body.summary !== undefined) updates.summary = body.summary;
+  if (body.sequence_label !== undefined) updates.sequenceLabel = body.sequence_label;
+  if (body.story_beat !== undefined) updates.storyBeat = body.story_beat;
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "Provide graph_data, status, and/or content_type" }, { status: 400 });
+    return NextResponse.json({ error: "Provide graph_data, status, content_type, summary, sequence_label, and/or story_beat" }, { status: 400 });
   }
   await db
     .update(projects)

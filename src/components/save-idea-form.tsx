@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { saveIdea } from "@/app/dashboard/ideas/actions";
-import { queryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query/query-keys";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";

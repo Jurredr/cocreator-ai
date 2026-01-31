@@ -11,10 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { queryKeys } from "@/lib/query-keys";
-import { fetchApi } from "@/lib/fetch-api";
-import { useRedirectOnUnauthorized } from "@/lib/use-redirect-unauthorized";
-import type { IdeaGraphData } from "@/lib/idea-graph-types";
+import { fetchApi } from "@/lib/api/fetch-api";
+import { queryKeys } from "@/lib/query/query-keys";
+import { useRedirectOnUnauthorized } from "@/lib/hooks/use-redirect-unauthorized";
+import type { IdeaGraphData } from "@/lib/types/idea-graph-types";
 import type { ProjectContentType } from "@/lib/db/schema";
 import {
   brainstormNoteForNode,
@@ -132,13 +132,17 @@ export default function ProjectCanvasPage({
   };
 
   const handleGenerateNodeContent = async (params: {
-    type: import("@/lib/idea-graph-types").IdeaNodeType;
+    type: import("@/lib/types/idea-graph-types").IdeaNodeType;
     contextContent: string;
+    openingHook?: string;
+    additionalContext?: string;
   }): Promise<string> => {
     const result = await generateNodeContentForNode({
       projectId,
       type: params.type,
       contextContent: params.contextContent,
+      openingHook: params.openingHook,
+      additionalContext: params.additionalContext,
     });
     if ("error" in result) {
       toast.error(result.error);

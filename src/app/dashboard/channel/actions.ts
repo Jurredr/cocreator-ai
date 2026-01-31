@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { channels, buckets, channelInspirationVideos } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { brainstormGoalsAndBuckets } from "@/lib/openai";
+import { brainstormGoalsAndBuckets } from "@/lib/ai/openai";
 import { getChannelWithBuckets, getChannelByUserId } from "@/lib/db/queries";
 
 export async function createOrUpdateChannel(formData: FormData): Promise<
@@ -21,6 +21,7 @@ export async function createOrUpdateChannel(formData: FormData): Promise<
   const name = (formData.get("name") as string)?.trim();
   const coreAudience = (formData.get("coreAudience") as string)?.trim() || null;
   const goals = (formData.get("goals") as string)?.trim() || null;
+  const nextSequenceLabel = (formData.get("nextSequenceLabel") as string)?.trim() || null;
   if (!name) {
     return { error: "Channel name is required" };
   }
@@ -32,6 +33,7 @@ export async function createOrUpdateChannel(formData: FormData): Promise<
         name,
         coreAudience,
         goals,
+        nextSequenceLabel,
         updatedAt: new Date(),
       })
       .where(eq(channels.id, existing.id));
@@ -41,6 +43,7 @@ export async function createOrUpdateChannel(formData: FormData): Promise<
       name,
       coreAudience,
       goals,
+      nextSequenceLabel,
     });
   }
   revalidatePath("/dashboard");
